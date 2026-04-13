@@ -119,31 +119,53 @@ def generate_m3u_playlist():
                 print("🔐 Obtendo token JWT...", file=sys.stderr)
                 jwt_token, vod_data = get_jwt_and_vod_data(session, device_id, series_id)
                 print("✅ JWT obtido com sucesso.\n", file=sys.stderr)
+
+                # DEBUG: exibe um resumo da resposta VOD
+                vod_list = vod_data.get("VOD", [])
+                print(f"   📦 VOD contém {len(vod_list)} item(ns)", file=sys.stderr)
+                if vod_list:
+                    first = vod_list[0]
+                    print(f"   Série retornada: {first.get('name')} (ID: {first.get('id')})", file=sys.stderr)
+                    seasons = first.get("seasons", [])
+                    print(f"   Temporadas: {len(seasons)}", file=sys.stderr)
+                    if seasons:
+                        first_season = seasons[0]
+                        eps = first_season.get("episodes", [])
+                        print(f"   Episódios na primeira temporada: {len(eps)}", file=sys.stderr)
+                        if eps:
+                            ep0 = eps[0]
+                            print(f"   Primeiro episódio: {ep0.get('name')} (_id: {ep0.get('_id')})", file=sys.stderr)
+                else:
+                    # Tenta buscar em outros lugares (fallback)
+                    print("   ⚠️ Nenhum VOD encontrado, exibindo chaves da resposta:", file=sys.stderr)
+                    print(f"   Chaves disponíveis: {list(vod_data.keys())}", file=sys.stderr)
+                    if "EPG" in vod_data:
+                        print("   EPG presente (talvez seja canal ao vivo)", file=sys.stderr)
+                    continue
+
+                if not vod_list:
+                    continue
+
+                series_info = vod_list[0]
+                series_name = series_info.get("name", "Série Desconhecida")
+                for season in series_info.get("seasons", []):
+                    for ep in season.get("episodes", []):
+                        ep_id = ep.get("_id")
+                        if not ep_id:
+                            continue
+                        ep_title = ep.get("name", "Sem título")
+                        ep_number = ep.get("number", "S00E00")
+                        thumb = ep.get("thumbnail", {}).get("path", "")
+                        if not thumb:
+                            thumb = f"https://images.pluto.tv/episodes/{ep_id}/screenshot16_9.jpg"
+                        url = build_stream_url(ep_id, jwt_token, device_id)
+                        f.write(f'#EXTINF:-1 type="video" tvg-logo="{thumb}" group-title="{series_name}", {ep_number} - {ep_title}\n')
+                        f.write(f"{url}\n")
+                        print(f"   ✅ {ep_number}: {ep_title}", file=sys.stderr)
+
             except Exception as e:
                 print(f"   ❌ Erro ao obter dados: {e}", file=sys.stderr)
                 continue
-
-            vod_list = vod_data.get("VOD", [])
-            if not vod_list:
-                print("   ⚠️ Nenhum dado VOD encontrado", file=sys.stderr)
-                continue
-
-            series_info = vod_list[0]
-            series_name = series_info.get("name", "Série Desconhecida")
-            for season in series_info.get("seasons", []):
-                for ep in season.get("episodes", []):
-                    ep_id = ep.get("_id")
-                    if not ep_id:
-                        continue
-                    ep_title = ep.get("name", "Sem título")
-                    ep_number = ep.get("number", "S00E00")
-                    thumb = ep.get("thumbnail", {}).get("path", "")
-                    if not thumb:
-                        thumb = f"https://images.pluto.tv/episodes/{ep_id}/screenshot16_9.jpg"
-                    url = build_stream_url(ep_id, jwt_token, device_id)
-                    f.write(f'#EXTINF:-1 type="video" tvg-logo="{thumb}" group-title="{series_name}", {ep_number} - {ep_title}\n')
-                    f.write(f"{url}\n")
-                    print(f"   ✅ {ep_number}: {ep_title}", file=sys.stderr)
 
     print(f"\n🎉 Playlist '{OUTPUT_FILE}' gerada com sucesso!", file=sys.stderr)
 
