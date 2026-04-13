@@ -31,15 +31,8 @@ def parse_netscape_cookies(content):
             cookies[name] = value
     return cookies
 
-def resolve_series_id(session, external_id):
-    resp = session.get(SLUG_RESOLVER, params={"slugs": external_id})
-    resp.raise_for_status()
-    data = resp.json()
-    if external_id in data:
-        return data[external_id]["id"]
-    raise ValueError(f"Slug {external_id} not resolved")
-
-def get_jwt_and_vod_data(session, device_id, series_id):
+def get_jwt_token(session, device_id):
+    """Obtém um token JWT sem associar a uma série específica."""
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -58,11 +51,10 @@ def get_jwt_and_vod_data(session, device_id, series_id):
         "deviceDNT": "false",
         "serverSideAds": "false",
         "userId": "",
-        "seriesIDs": series_id,
     }
     resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
-        "Referer": "https://pluto.tv/br/on-demand/series/" + series_id,
+        "Referer": "https://pluto.tv/",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
     }, params=params)
@@ -71,7 +63,48 @@ def get_jwt_and_vod_data(session, device_id, series_id):
     token = data.get("sessionToken")
     if not token:
         raise ValueError("sessionToken missing")
-    return token, data
+    return token
+
+def resolve_series_id(session, external_id, jwt_token):
+    """Resolve o ID externo para o ID interno usando o endpoint slugs, agora com autenticação."""
+    headers = {"Authorization": f"Bearer {jwt_token}"}
+    resp = session.get(SLUG_RESOLVER, headers=headers, params={"slugs": external_id})
+    resp.raise_for_status()
+    data = resp.json()
+    if external_id in data:
+        return data[external_id]["id"]
+    raise ValueError(f"Slug {external_id} not resolved")
+
+def get_vod_data(session, device_id, internal_id, jwt_token):
+    """Obtém os dados VOD da série usando o ID interno."""
+    params = {
+        "appName": "web",
+        "appVersion": FIXED_APP_VERSION,
+        "clientModelNumber": "1.0.0",
+        "deviceType": "web",
+        "deviceMake": "firefox",
+        "deviceModel": "web",
+        "deviceVersion": "149.0",
+        "clientID": device_id,
+        "deviceId": device_id,
+        "sessionID": device_id,
+        "marketingRegion": "BR",
+        "country": "BR",
+        "deviceLat": "-29.7800",
+        "deviceLon": "-55.8000",
+        "deviceDNT": "false",
+        "serverSideAds": "false",
+        "userId": "",
+        "seriesIDs": internal_id,
+    }
+    resp = session.get(BOOT_URL, headers={
+        "User-Agent": USER_AGENT,
+        "Referer": "https://pluto.tv/br/on-demand/series/" + internal_id,
+        "Origin": "https://pluto.tv",
+        "Accept": "application/json",
+    }, params=params)
+    resp.raise_for_status()
+    return resp.json()
 
 def build_stream_url(episode_id, jwt_token, device_id):
     params = {
@@ -120,18 +153,24 @@ def generate_m3u_playlist():
     device_id = str(uuid.uuid4())
     print(f"🆔 Device ID: {device_id}", file=sys.stderr)
 
+    # 1. Obtém o JWT inicial
+    print("🔐 Obtendo token JWT inicial...", file=sys.stderr)
+    jwt_token = get_jwt_token(session, device_id)
+    print("✅ JWT inicial obtido.", file=sys.stderr)
+
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
         for external_id in SERIES_IDS:
             print(f"\n📺 Processando ID externo: {external_id}", file=sys.stderr)
             try:
+                # 2. Resolve o ID interno
                 print("🔍 Resolvendo ID interno...", file=sys.stderr)
-                internal_id = resolve_series_id(session, external_id)
+                internal_id = resolve_series_id(session, external_id, jwt_token)
                 print(f"   ID interno: {internal_id}", file=sys.stderr)
 
-                print("🔐 Obtendo token JWT...", file=sys.stderr)
-                jwt_token, vod_data = get_jwt_and_vod_data(session, device_id, internal_id)
-                print("✅ JWT obtido com sucesso.\n", file=sys.stderr)
+                # 3. Obtém os dados da série com o ID interno
+                print("📡 Obtendo dados da série...", file=sys.stderr)
+                vod_data = get_vod_data(session, device_id, internal_id, jwt_token)
 
                 vod_list = vod_data.get("VOD", [])
                 print(f"   📦 VOD contém {len(vod_list)} item(ns)", file=sys.stderr)
@@ -139,10 +178,9 @@ def generate_m3u_playlist():
                     print("   ⚠️ Nenhum VOD encontrado", file=sys.stderr)
                     continue
 
-                # Filtra pelo ID interno
                 series_info = next((v for v in vod_list if v["id"] == internal_id), None)
                 if not series_info:
-                    print(f"   ❌ Série com ID {internal_id} não encontrada na resposta VOD", file=sys.stderr)
+                    print(f"   ❌ Série com ID {internal_id} não encontrada", file=sys.stderr)
                     continue
 
                 series_name = series_info.get("name", "Série Desconhecida")
