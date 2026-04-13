@@ -1,36 +1,46 @@
 import os
 import requests
 import json
-import re
-from urllib.parse import urlencode, urlparse, parse_qs
+from urllib.parse import urlencode
 
 # --- Configuração (via Secrets do GitHub) ---
-PLUTO_COOKIES = os.environ.get("PLUTO_COOKIES")  # string no formato "nome1=valor1; nome2=valor2"
+PLUTO_COOKIES = os.environ.get("PLUTO_COOKIES", "")
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
 CATALOG_SERIES_URL = "https://service-vod.clusters.pluto.tv/v4/vod/series/{series_id}/seasons"
 STITCHER_BASE = "https://cfd-v4-service-stitcher-dash-use1-1.prd.pluto.tv/v2/stitch/dash/episode/{episode_id}/main.mpd"
 
-# Lista de IDs de séries que você quer incluir na playlist.
-# Basta adicionar o ID da série (ex: "66d70dfaf98f52001332a8f5")
+# Lista de IDs de séries que você quer incluir na playlist
 SERIES_IDS = [
     "66d70dfaf98f52001332a8f5",  # Tratamento de Choque
-    # Adicione outros IDs aqui
 ]
 
 def parse_cookies(cookie_string):
-    """Converte string de cookies em dicionário."""
+    """
+    Converte uma string de cookies em um dicionário limpo.
+    Remove espaços, ignora entradas vazias e lida com valores codificados.
+    """
     cookies = {}
+    if not cookie_string:
+        return cookies
+
+    # Divide por ';' e processa cada parte
     for item in cookie_string.split(';'):
-        if '=' in item:
-            key, value = item.strip().split('=', 1)
-            cookies[key] = value
+        item = item.strip()
+        if not item or '=' not in item:
+            continue
+        key, value = item.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        # Remove aspas se existirem (alguns formatos exportam com aspas)
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+        cookies[key] = value
     return cookies
 
 def get_jwt_token(session):
     """Obtém um JWT válido a partir do endpoint /start."""
     headers = {"User-Agent": USER_AGENT}
-    # Parâmetros obrigatórios (obtidos da análise do seu tráfego)
     params = {
         "appName": "web",
         "appVersion": "9.20.0-89258290264838515e264f5b051b7c1602a58482",
@@ -38,14 +48,27 @@ def get_jwt_token(session):
         "deviceMake": "chrome",
         "deviceModel": "web",
         "deviceVersion": "143.0.0",
-        "clientID": "a491ac3f-509b-4637-a4a1-9ed036ce5cf2",  # Pode ser um UUID fixo
+        "clientID": "a491ac3f-509b-4637-a4a1-9ed036ce5cf2",
         "marketingRegion": "BR",
         "country": "BR"
     }
-    response = session.get(BOOT_URL, headers=headers, params=params)
-    response.raise_for_status()
-    data = response.json()
-    return data.get("sessionToken")
+    try:
+        response = session.get(BOOT_URL, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+        token = data.get("sessionToken")
+        if not token:
+            raise ValueError("Resposta de /start não contém 'sessionToken'.")
+        return token
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro na requisição para {BOOT_URL}: {e}")
+        if hasattr(e, 'response') and e.response:
+            print(f"   Status: {e.response.status_code}")
+            print(f"   Corpo: {e.response.text[:200]}")
+        raise
+    except json.JSONDecodeError as e:
+        print(f"❌ Resposta inválida (não é JSON): {e}")
+        raise
 
 def fetch_series_episodes(session, jwt_token, series_id):
     """Busca todas as temporadas e episódios de uma série."""
@@ -73,7 +96,7 @@ def build_stream_url(episode_id, jwt_token, session_id, device_id):
         "appVersion": "9.20.0-89258290264838515e264f5b051b7c1602a58482",
         "app_name": "web",
         "clientDeviceType": "0",
-        "clientID": device_id,  # geralmente o mesmo
+        "clientID": device_id,
         "clientModelNumber": "1.0.0",
         "country": "BR",
         "deviceDNT": "false",
@@ -97,21 +120,28 @@ def build_stream_url(episode_id, jwt_token, session_id, device_id):
 def generate_m3u_playlist(output_file="playlist.m3u"):
     """Gera o arquivo M3U final."""
     if not PLUTO_COOKIES:
-        raise ValueError("PLUTO_COOKIES não definido no ambiente.")
+        raise ValueError("❌ PLUTO_COOKIES não definido no ambiente (Secrets do GitHub).")
+
+    # Sanitiza e aplica os cookies
+    cookies_dict = parse_cookies(PLUTO_COOKIES)
+    if not cookies_dict:
+        raise ValueError("❌ Nenhum cookie válido encontrado em PLUTO_COOKIES.")
 
     session = requests.Session()
-    session.cookies.update(parse_cookies(PLUTO_COOKIES))
     session.headers.update({"User-Agent": USER_AGENT})
+
+    # Adiciona cookies um a um para evitar problemas de formatação no cabeçalho
+    for key, value in cookies_dict.items():
+        session.cookies.set(key, value, domain=".pluto.tv")
+
+    print(f"🍪 Cookies carregados: {len(cookies_dict)}")
 
     print("🔐 Obtendo token JWT...")
     jwt_token = get_jwt_token(session)
-    if not jwt_token:
-        print("❌ Falha ao obter JWT. Verifique os cookies.")
-        return
+    print("✅ JWT obtido com sucesso.")
 
-    # Extrai sessionID e deviceID do JWT (opcional, mas pode ser usado nos params)
-    # Para simplificar, podemos usar valores fixos como no seu log
-    session_id = "c4f5efe2-370e-11f1-ace8-5e805755c9ec"  # gerado por sessão
+    # IDs fixos baseados no seu log (funcionam para esta sessão)
+    session_id = "c4f5efe2-370e-11f1-ace8-5e805755c9ec"
     device_id = "a491ac3f-509b-4637-a4a1-9ed036ce5cf2"
 
     with open(output_file, "w", encoding="utf-8") as f:
@@ -133,11 +163,10 @@ def generate_m3u_playlist(output_file="playlist.m3u"):
                 episodes = season.get("episodes", [])
                 for ep in episodes:
                     ep_id = ep.get("id")
-                    ep_title = ep.get("name")
-                    ep_number = ep.get("number")  # ex: "S01E01"
+                    ep_title = ep.get("name", "Sem título")
+                    ep_number = ep.get("number", "S00E00")
                     thumbnail = ep.get("thumbnail", {}).get("path", "")
                     if not thumbnail:
-                        # fallback para o formato de screenshot que você identificou
                         thumbnail = f"https://images.pluto.tv/episodes/{ep_id}/screenshot16_9.jpg"
 
                     if not ep_id:
@@ -145,7 +174,6 @@ def generate_m3u_playlist(output_file="playlist.m3u"):
 
                     stream_url = build_stream_url(ep_id, jwt_token, session_id, device_id)
 
-                    # Linha EXTINF
                     f.write(f'#EXTINF:-1 type="video" tvg-logo="{thumbnail}" group-title="{series_name}", {ep_number} - {ep_title}\n')
                     f.write(f"{stream_url}\n")
                     print(f"   ✅ {ep_number}: {ep_title}")
