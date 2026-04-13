@@ -10,8 +10,9 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101
 OUTPUT_FILE = "playlist.m3u"
 
 EPISODE_URLS = [
-    "https://pluto.tv/br/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d71d6c46be430013cf2195",
-    "https://pluto.tv/br/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d71d6e46be430013cf22a4",
+    "https://pluto.tv/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d716679f04dd0013b7f9de",
+    "https://pluto.tv/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d70dfbf98f52001332a916",
+    "https://pluto.tv/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d70dfef98f52001332aa28",
 ]
 
 def get_stream_url(video_url, cookies_file):
