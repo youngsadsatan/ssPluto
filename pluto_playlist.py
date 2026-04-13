@@ -11,11 +11,9 @@ from urllib.parse import urlencode
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
-STITCHER_BASE = "https://cfd-v4-service-stitcher-dash-use1-1.prd.pluto.tv/v2/stitch/dash/episode/{episode_id}/main.mpd"
+STITCHER_BASE = "https://cfd-v4-service-stitcher-dash-use1-1.prd.pluto.tv/v2/stitch/hls/episode/{episode_id}/master.m3u8"
 OUTPUT_FILE = "playlist.m3u"
 
-# --- Lista de episódios (exemplo com "Tratamento de Choque") ---
-# Você precisará coletar os IDs de cada episódio manualmente.
 EPISODES = [
     {"season": 1, "episode": 1,  "title": "Pilot",                               "episode_id": "60959ee4d9b0ce0014e4b694"},
     {"season": 1, "episode": 2,  "title": "Beers and Ponds",                     "episode_id": "60959e2141fc48001326c5af"},
@@ -53,7 +51,6 @@ def parse_netscape_cookies(content):
     return cookies
 
 def get_jwt_token(session, device_id):
-    """Obtém um token JWT válido."""
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -86,8 +83,7 @@ def get_jwt_token(session, device_id):
         raise ValueError("sessionToken missing")
     return token
 
-def build_dash_url(episode_id, jwt_token, device_id):
-    """Constrói a URL DASH completa para um episódio."""
+def build_stream_url(episode_id, jwt_token, device_id):
     params = {
         "jwt": jwt_token,
         "sid": device_id,
@@ -146,7 +142,7 @@ def generate_m3u_playlist():
             ep_id = ep["episode_id"]
             title = ep["title"]
             thumb = f"https://images.pluto.tv/episodes/{ep_id}/screenshot16_9.jpg"
-            url = build_dash_url(ep_id, jwt_token, device_id)
+            url = build_stream_url(ep_id, jwt_token, device_id)
 
             f.write(f'#EXTINF:-1 type="video" tvg-logo="{thumb}" group-title="Tratamento de Choque", S{season}E{episode} • {title}\n')
             f.write(f"{url}\n")
