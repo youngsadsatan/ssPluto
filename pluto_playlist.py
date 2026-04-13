@@ -2,6 +2,7 @@ import os
 import requests
 import json
 from urllib.parse import urlencode
+import re
 
 # --- Configuração (via Secrets do GitHub) ---
 PLUTO_COOKIES = os.environ.get("PLUTO_COOKIES", "")
@@ -10,32 +11,36 @@ BOOT_URL = "https://boot.pluto.tv/v4/start"
 CATALOG_SERIES_URL = "https://service-vod.clusters.pluto.tv/v4/vod/series/{series_id}/seasons"
 STITCHER_BASE = "https://cfd-v4-service-stitcher-dash-use1-1.prd.pluto.tv/v2/stitch/dash/episode/{episode_id}/main.mpd"
 
-# Lista de IDs de séries que você quer incluir na playlist
 SERIES_IDS = [
     "66d70dfaf98f52001332a8f5",  # Tratamento de Choque
 ]
 
-def parse_cookies(cookie_string):
+def parse_netscape_cookies(content):
     """
-    Converte uma string de cookies em um dicionário limpo.
-    Remove espaços, ignora entradas vazias e lida com valores codificados.
+    Processa o conteúdo no formato Netscape (curl/wget).
+    Retorna um dicionário {nome: valor}.
     """
     cookies = {}
-    if not cookie_string:
+    if not content:
         return cookies
 
-    # Divide por ';' e processa cada parte
-    for item in cookie_string.split(';'):
-        item = item.strip()
-        if not item or '=' not in item:
+    for line in content.splitlines():
+        line = line.strip()
+        # Ignora linhas de comentário e vazias
+        if not line or line.startswith('#'):
             continue
-        key, value = item.split('=', 1)
-        key = key.strip()
+
+        parts = line.split('\t')
+        if len(parts) != 7:
+            continue  # linha inválida
+
+        domain, flag1, path, secure, expires, name, value = parts
+        # Apenas para garantir que não haja espaços extras
+        name = name.strip()
         value = value.strip()
-        # Remove aspas se existirem (alguns formatos exportam com aspas)
-        if value.startswith('"') and value.endswith('"'):
-            value = value[1:-1]
-        cookies[key] = value
+        if name:
+            cookies[name] = value
+
     return cookies
 
 def get_jwt_token(session):
@@ -122,15 +127,16 @@ def generate_m3u_playlist(output_file="playlist.m3u"):
     if not PLUTO_COOKIES:
         raise ValueError("❌ PLUTO_COOKIES não definido no ambiente (Secrets do GitHub).")
 
-    # Sanitiza e aplica os cookies
-    cookies_dict = parse_cookies(PLUTO_COOKIES)
+    # Processa o conteúdo no formato Netscape
+    cookies_dict = parse_netscape_cookies(PLUTO_COOKIES)
     if not cookies_dict:
-        raise ValueError("❌ Nenhum cookie válido encontrado em PLUTO_COOKIES.")
+        raise ValueError("❌ Nenhum cookie válido encontrado em PLUTO_COOKIES (formato Netscape esperado).")
 
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
 
-    # Adiciona cookies um a um para evitar problemas de formatação no cabeçalho
+    # Adiciona cookies um a um, definindo o domínio com base no arquivo (opcional)
+    # Para simplificar, usamos o domínio padrão .pluto.tv para todos, o que funciona.
     for key, value in cookies_dict.items():
         session.cookies.set(key, value, domain=".pluto.tv")
 
@@ -140,7 +146,7 @@ def generate_m3u_playlist(output_file="playlist.m3u"):
     jwt_token = get_jwt_token(session)
     print("✅ JWT obtido com sucesso.")
 
-    # IDs fixos baseados no seu log (funcionam para esta sessão)
+    # IDs fixos (você pode extrair da resposta do /start se quiser, mas estes funcionam)
     session_id = "c4f5efe2-370e-11f1-ace8-5e805755c9ec"
     device_id = "a491ac3f-509b-4637-a4a1-9ed036ce5cf2"
 
