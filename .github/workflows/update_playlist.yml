@@ -5,7 +5,6 @@ on:
     - cron: '0 */6 * * *'  # a cada 6 horas
   workflow_dispatch:
 
-# 👇 ESSA LINHA É CRUCIAL PARA CORRIGIR O ERRO 403
 permissions:
   contents: write
 
