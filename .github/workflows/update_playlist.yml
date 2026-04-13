@@ -2,7 +2,7 @@ name: Atualizar Playlist Pluto TV
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # a cada 6 horas
+    - cron: '0 */12 * * *'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ jobs:
         python-version: '3.11'
 
     - name: Instalar dependências
-      run: pip install requests
+      run: pip install streamlink
 
     - name: Executar script
       env:
