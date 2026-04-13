@@ -3,13 +3,13 @@
 
 import os
 import sys
-import re
 import json
 import uuid
 import requests
 from urllib.parse import urlencode
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
+FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
 STITCHER_BASE = "https://cfd-v4-service-stitcher-dash-use1-1.prd.pluto.tv/v2/stitch/dash/episode/{episode_id}/main.mpd"
 SERIES_IDS = ["66d70dfaf98f52001332a8f5"]
@@ -30,27 +30,15 @@ def parse_netscape_cookies(content):
             cookies[name] = value
     return cookies
 
-def get_app_version(session):
-    resp = session.get("https://pluto.tv/", headers={"User-Agent": USER_AGENT})
-    resp.raise_for_status()
-    match = re.search(r'<meta name="appVersion" content="([^"]+)"', resp.text)
-    if not match:
-        match = re.search(r'"appVersion":"([^"]+)"', resp.text)
-    if not match:
-        raise RuntimeError("appVersion not found")
-    return match.group(1)
-
 def get_jwt_and_vod_data(session, device_id, series_id):
-    app_version = get_app_version(session)
-    print(f"📱 appVersion: {app_version}", file=sys.stderr)
     params = {
         "appName": "web",
-        "appVersion": app_version,
+        "appVersion": FIXED_APP_VERSION,
         "clientModelNumber": "1.0.0",
         "deviceType": "web",
         "deviceMake": "firefox",
         "deviceModel": "web",
-        "deviceVersion": "136.0",
+        "deviceVersion": "149.0",
         "clientID": device_id,
         "deviceId": device_id,
         "sessionID": device_id,
@@ -83,7 +71,7 @@ def build_stream_url(episode_id, jwt_token, device_id):
         "deviceId": device_id,
         "advertisingId": "",
         "appName": "web",
-        "appVersion": "9.20.0-89258290264838515e264f5b051b7c1602a58482",
+        "appVersion": FIXED_APP_VERSION,
         "app_name": "web",
         "clientDeviceType": "0",
         "clientID": device_id,
@@ -95,7 +83,7 @@ def build_stream_url(episode_id, jwt_token, device_id):
         "deviceMake": "firefox",
         "deviceModel": "web",
         "deviceType": "web",
-        "deviceVersion": "136.0",
+        "deviceVersion": "149.0",
         "marketingRegion": "BR",
         "serverSideAds": "false",
         "sessionID": device_id,
