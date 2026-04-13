@@ -18,7 +18,7 @@ jobs:
     - name: Executar script
       env:
         PLUTO_COOKIES: ${{ secrets.PLUTO_COOKIES }}
-      run: python generate_pluto_playlist.py
+      run: python pluto_playlist.py
     - name: Commit e push
       run: |
         git config user.name github-actions
