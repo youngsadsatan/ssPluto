@@ -1,0 +1,28 @@
+name: Atualizar Playlist Pluto TV
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # a cada 6 horas
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Instalar dependências
+      run: pip install requests
+    - name: Executar script
+      env:
+        PLUTO_COOKIES: ${{ secrets.PLUTO_COOKIES }}
+      run: python generate_pluto_playlist.py
+    - name: Commit e push
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git add playlist.m3u
+        git diff --staged --quiet || git commit -m "Atualiza playlist"
+        git push
