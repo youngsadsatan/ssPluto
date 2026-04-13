@@ -17,9 +17,24 @@ OUTPUT_FILE = "playlist.m3u"
 # --- Lista de episódios (exemplo com "Tratamento de Choque") ---
 # Você precisará coletar os IDs de cada episódio manualmente.
 EPISODES = [
-    {"season": 1, "episode": 1, "title": "Charlie de volta à terapia", "episode_id": "66d71d6c46be430013cf2195"},
-    {"season": 1, "episode": 2, "title": "Charlie e a transa que o tirou da seca", "episode_id": "66d71d6e46be430013cf22a4"},
-    # Adicione aqui os próximos episódios...
+    {"season": 1, "episode": 1,  "title": "Pilot",                               "episode_id": "60959ee4d9b0ce0014e4b694"},
+    {"season": 1, "episode": 2,  "title": "Beers and Ponds",                     "episode_id": "60959e2141fc48001326c5af"},
+    {"season": 1, "episode": 3,  "title": "Pranks and Tricks",                   "episode_id": "60959e2341fc48001326c5d6"},
+    {"season": 1, "episode": 4,  "title": "Kim Kelly Is My Friend",             "episode_id": "60959e2141fc48001326c59a"},
+    {"season": 1, "episode": 5,  "title": "Tests and Tits",                      "episode_id": "60959e2041fc48001326c553"},
+    {"season": 1, "episode": 6,  "title": "I'm in a Band",                      "episode_id": "60959e2541fc48001326c674"},
+    {"season": 1, "episode": 7,  "title": "Carded and Discarded",               "episode_id": "60959e2e41fc48001326c6f2"},
+    {"season": 1, "episode": 8,  "title": "Girlfriends and Boyfriends",          "episode_id": "60959e2541fc48001326c65d"},
+    {"season": 1, "episode": 9,  "title": "We Have Spirit",                      "episode_id": "60959e2641fc48001326c689"},
+    {"season": 1, "episode": 10, "title": "The Diary",                          "episode_id": "60959e2341fc48001326c615"},
+    {"season": 1, "episode": 11, "title": "Appearance and Books",               "episode_id": "60959e2141fc48001326c585"},
+    {"season": 1, "episode": 12, "title": "The Garage Door",                    "episode_id": "60959e2641fc48001326c6a7"},
+    {"season": 1, "episode": 13, "title": "Choking and Smoking",                "episode_id": "60959e2341fc48001326c5eb"},
+    {"season": 1, "episode": 14, "title": "Dead Dogs and Gym Teachers",         "episode_id": "60959e2e41fc48001326c707"},
+    {"season": 1, "episode": 15, "title": "Noshing and Moshing",                "episode_id": "60959f4c72e8e300148a367f"},
+    {"season": 1, "episode": 16, "title": "Kissing and Loafing",                "episode_id": "60959e2341fc48001326c62b"},
+    {"season": 1, "episode": 17, "title": "The Little Things",                 "episode_id": "60959e2341fc48001326c600"},
+    {"season": 1, "episode": 18, "title": "Discos and Dragons",                "episode_id": "60959e2141fc48001326c56e"},
 ]
 
 def parse_netscape_cookies(content):
