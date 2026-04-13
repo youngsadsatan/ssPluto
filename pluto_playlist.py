@@ -3,209 +3,57 @@
 
 import os
 import sys
+import subprocess
 import json
-import uuid
-import requests
-from urllib.parse import urlencode, urlparse, parse_qs
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
-FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
-BOOT_URL = "https://boot.pluto.tv/v4/start"
-SLUG_RESOLVER = "https://service-vod.clusters.pluto.tv/v4/vod/slugs"
-STITCHER_BASE = "https://cfd-v4-service-stitcher-dash-use1-1.prd.pluto.tv/v2/stitch/dash/episode/{episode_id}/main.mpd"
-SERIES_IDS = ["66d70dfaf98f52001332a8f5"]
 OUTPUT_FILE = "playlist.m3u"
 
-def parse_netscape_cookies(content):
-    cookies = {}
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        parts = line.split('\t')
-        if len(parts) != 7:
-            continue
-        name = parts[5].strip()
-        value = parts[6].strip()
-        if name:
-            cookies[name] = value
-    return cookies
+EPISODE_URLS = [
+    "https://pluto.tv/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d716679f04dd0013b7f9de",
+    "https://pluto.tv/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d70dfbf98f52001332a916",
+    "https://pluto.tv/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d70dfef98f52001332aa28",
+]
 
-def get_jwt_token(session, device_id):
-    """Obtém um token JWT sem associar a uma série específica."""
-    params = {
-        "appName": "web",
-        "appVersion": FIXED_APP_VERSION,
-        "clientModelNumber": "1.0.0",
-        "deviceType": "web",
-        "deviceMake": "firefox",
-        "deviceModel": "web",
-        "deviceVersion": "149.0",
-        "clientID": device_id,
-        "deviceId": device_id,
-        "sessionID": device_id,
-        "marketingRegion": "BR",
-        "country": "BR",
-        "deviceLat": "-29.7800",
-        "deviceLon": "-55.8000",
-        "deviceDNT": "false",
-        "serverSideAds": "false",
-        "userId": "",
-    }
-    resp = session.get(BOOT_URL, headers={
-        "User-Agent": USER_AGENT,
-        "Referer": "https://pluto.tv/",
-        "Origin": "https://pluto.tv",
-        "Accept": "application/json",
-    }, params=params)
-    resp.raise_for_status()
-    data = resp.json()
-    token = data.get("sessionToken")
-    if not token:
-        raise ValueError("sessionToken missing")
-    return token
-
-def resolve_series_id(session, external_id, jwt_token):
-    """Resolve o ID externo para o ID interno usando o endpoint slugs, agora com autenticação."""
-    headers = {"Authorization": f"Bearer {jwt_token}"}
-    resp = session.get(SLUG_RESOLVER, headers=headers, params={"slugs": external_id})
-    resp.raise_for_status()
-    data = resp.json()
-    if external_id in data:
-        return data[external_id]["id"]
-    raise ValueError(f"Slug {external_id} not resolved")
-
-def get_vod_data(session, device_id, internal_id, jwt_token):
-    """Obtém os dados VOD da série usando o ID interno."""
-    params = {
-        "appName": "web",
-        "appVersion": FIXED_APP_VERSION,
-        "clientModelNumber": "1.0.0",
-        "deviceType": "web",
-        "deviceMake": "firefox",
-        "deviceModel": "web",
-        "deviceVersion": "149.0",
-        "clientID": device_id,
-        "deviceId": device_id,
-        "sessionID": device_id,
-        "marketingRegion": "BR",
-        "country": "BR",
-        "deviceLat": "-29.7800",
-        "deviceLon": "-55.8000",
-        "deviceDNT": "false",
-        "serverSideAds": "false",
-        "userId": "",
-        "seriesIDs": internal_id,
-    }
-    resp = session.get(BOOT_URL, headers={
-        "User-Agent": USER_AGENT,
-        "Referer": "https://pluto.tv/br/on-demand/series/" + internal_id,
-        "Origin": "https://pluto.tv",
-        "Accept": "application/json",
-    }, params=params)
-    resp.raise_for_status()
-    return resp.json()
-
-def build_stream_url(episode_id, jwt_token, device_id):
-    params = {
-        "jwt": jwt_token,
-        "sid": device_id,
-        "deviceId": device_id,
-        "advertisingId": "",
-        "appName": "web",
-        "appVersion": FIXED_APP_VERSION,
-        "app_name": "web",
-        "clientDeviceType": "0",
-        "clientID": device_id,
-        "clientModelNumber": "1.0.0",
-        "country": "BR",
-        "deviceDNT": "false",
-        "deviceLat": "-29.7800",
-        "deviceLon": "-55.8000",
-        "deviceMake": "firefox",
-        "deviceModel": "web",
-        "deviceType": "web",
-        "deviceVersion": "149.0",
-        "marketingRegion": "BR",
-        "serverSideAds": "false",
-        "sessionID": device_id,
-        "userId": "",
-        "masterJWTPassthrough": "true",
-        "includeExtendedEvents": "true",
-        "eventVOD": "false",
-    }
-    return f"{STITCHER_BASE.format(episode_id=episode_id)}?{urlencode(params)}"
+def get_stream_url(video_url, cookies_file):
+    cmd = [
+        "streamlink",
+        "--http-cookie", f"cookies.txt:{cookies_file}",
+        "--json",
+        video_url,
+        "best"
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout)
+        return data.get("url")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Erro ao executar streamlink para {video_url}: {e.stderr}", file=sys.stderr)
+        return None
 
 def generate_m3u_playlist():
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content:
         raise ValueError("PLUTO_COOKIES not set")
-    cookies = parse_netscape_cookies(cookie_content)
-    if not cookies:
-        raise ValueError("no valid cookies")
 
-    session = requests.Session()
-    session.headers.update({"User-Agent": USER_AGENT})
-    for name, value in cookies.items():
-        session.cookies.set(name, value, domain=".pluto.tv")
+    with open("cookies.txt", "w", encoding="utf-8") as f:
+        f.write(cookie_content)
 
-    print(f"🍪 Cookies carregados: {len(cookies)}", file=sys.stderr)
-    device_id = str(uuid.uuid4())
-    print(f"🆔 Device ID: {device_id}", file=sys.stderr)
-
-    # 1. Obtém o JWT inicial
-    print("🔐 Obtendo token JWT inicial...", file=sys.stderr)
-    jwt_token = get_jwt_token(session, device_id)
-    print("✅ JWT inicial obtido.", file=sys.stderr)
+    print(f"🍪 Cookies carregados", file=sys.stderr)
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
-        for external_id in SERIES_IDS:
-            print(f"\n📺 Processando ID externo: {external_id}", file=sys.stderr)
-            try:
-                # 2. Resolve o ID interno
-                print("🔍 Resolvendo ID interno...", file=sys.stderr)
-                internal_id = resolve_series_id(session, external_id, jwt_token)
-                print(f"   ID interno: {internal_id}", file=sys.stderr)
+        for url in EPISODE_URLS:
+            print(f"\n📺 Processando: {url}", file=sys.stderr)
+            stream_url = get_stream_url(url, "cookies.txt")
+            if stream_url:
+                f.write(f'#EXTINF:-1 type="video" group-title="Série", Episódio\n')
+                f.write(f"{stream_url}\n")
+                print(f"   ✅ URL obtida com sucesso", file=sys.stderr)
+            else:
+                print(f"   ❌ Falha ao obter URL do stream", file=sys.stderr)
 
-                # 3. Obtém os dados da série com o ID interno
-                print("📡 Obtendo dados da série...", file=sys.stderr)
-                vod_data = get_vod_data(session, device_id, internal_id, jwt_token)
-
-                vod_list = vod_data.get("VOD", [])
-                print(f"   📦 VOD contém {len(vod_list)} item(ns)", file=sys.stderr)
-                if not vod_list:
-                    print("   ⚠️ Nenhum VOD encontrado", file=sys.stderr)
-                    continue
-
-                series_info = next((v for v in vod_list if v["id"] == internal_id), None)
-                if not series_info:
-                    print(f"   ❌ Série com ID {internal_id} não encontrada", file=sys.stderr)
-                    continue
-
-                series_name = series_info.get("name", "Série Desconhecida")
-                seasons = series_info.get("seasons", [])
-                print(f"   Temporadas: {len(seasons)}", file=sys.stderr)
-
-                for season in seasons:
-                    for ep in season.get("episodes", []):
-                        ep_id = ep.get("_id")
-                        if not ep_id:
-                            continue
-                        ep_title = ep.get("name", "Sem título")
-                        ep_number = ep.get("number", "S00E00")
-                        thumb = ep.get("thumbnail", {}).get("path", "")
-                        if not thumb:
-                            thumb = f"https://images.pluto.tv/episodes/{ep_id}/screenshot16_9.jpg"
-                        url = build_stream_url(ep_id, jwt_token, device_id)
-                        f.write(f'#EXTINF:-1 type="video" tvg-logo="{thumb}" group-title="{series_name}", {ep_number} - {ep_title}\n')
-                        f.write(f"{url}\n")
-                        print(f"   ✅ {ep_number}: {ep_title}", file=sys.stderr)
-
-            except Exception as e:
-                print(f"   ❌ Erro: {e}", file=sys.stderr)
-                continue
-
+    os.remove("cookies.txt")
     print(f"\n🎉 Playlist '{OUTPUT_FILE}' gerada com sucesso!", file=sys.stderr)
 
 if __name__ == "__main__":
