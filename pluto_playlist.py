@@ -15,10 +15,28 @@ EPISODE_URLS = [
     "https://pluto.tv/on-demand/series/66d70dfaf98f52001332a8f5/season/1/episode/66d70dfef98f52001332aa28",
 ]
 
-def get_stream_url(video_url, cookies_file):
+def parse_netscape_cookies(content):
+    cookies = {}
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = line.split('\t')
+        if len(parts) != 7:
+            continue
+        name = parts[5].strip()
+        value = parts[6].strip()
+        if name:
+            cookies[name] = value
+    return cookies
+
+def cookies_to_string(cookies):
+    return "; ".join(f"{k}={v}" for k, v in cookies.items())
+
+def get_stream_url(video_url, cookies_str):
     cmd = [
         "streamlink",
-        "--http-cookie-file", cookies_file,
+        "--http-cookie", cookies_str,
         "--json",
         video_url,
         "best"
@@ -35,10 +53,10 @@ def generate_m3u_playlist():
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content:
         raise ValueError("PLUTO_COOKIES not set")
-
-    cookies_file = "cookies.txt"
-    with open(cookies_file, "w", encoding="utf-8") as f:
-        f.write(cookie_content)
+    cookies = parse_netscape_cookies(cookie_content)
+    if not cookies:
+        raise ValueError("no valid cookies")
+    cookies_str = cookies_to_string(cookies)
 
     print(f"🍪 Cookies carregados", file=sys.stderr)
 
@@ -46,7 +64,7 @@ def generate_m3u_playlist():
         f.write("#EXTM3U\n")
         for url in EPISODE_URLS:
             print(f"\n📺 Processando: {url}", file=sys.stderr)
-            stream_url = get_stream_url(url, cookies_file)
+            stream_url = get_stream_url(url, cookies_str)
             if stream_url:
                 f.write(f'#EXTINF:-1 type="video" group-title="Série", Episódio\n')
                 f.write(f"{stream_url}\n")
@@ -54,7 +72,6 @@ def generate_m3u_playlist():
             else:
                 print(f"   ❌ Falha ao obter URL", file=sys.stderr)
 
-    os.remove(cookies_file)
     print(f"\n🎉 Playlist '{OUTPUT_FILE}' gerada com sucesso!", file=sys.stderr)
 
 if __name__ == "__main__":
