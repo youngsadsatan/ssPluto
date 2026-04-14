@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Pluto TV Sniffer - Versão Robusta com Cookies
+Captura informações de séries on-demand do Pluto TV utilizando a API oficial.
+Requer a variável de ambiente PLUTO_COOKIES ou um arquivo de cookies.
+"""
+
 import json
 import logging
 import re
@@ -21,8 +27,10 @@ logging.basicConfig(
 logger = logging.getLogger("pluto_sniffer")
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
+FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
 VOD_API_URL = "https://service-vod.clusters.pluto.tv/v4/vod/series/{series_id}/seasons"
+
 CONFIG_SEARCH_PATHS = [
     Path("config.yml"),
     Path(".github/workflows/config.yml"),
@@ -82,10 +90,12 @@ def safe_filename(text: str) -> str:
     text = re.sub(r'[\\/*?:"<>|]', "", text)
     return text or "serie_sem_nome"
 
-def get_session_token(session: requests.Session, device_id: str, geo: dict) -> str:
+def get_jwt_token(session: requests.Session, device_id: str, geo: dict) -> str:
+    """Obtém o token JWT necessário para as requisições autenticadas."""
     params = {
         "appName": "web",
-        "appVersion": "9.20.0-89258290264838515e264f5b051b7c1602a58482",
+        "appVersion": FIXED_APP_VERSION,
+        "clientModelNumber": "1.0.0",
         "deviceType": "web",
         "deviceMake": "firefox",
         "deviceModel": "web",
@@ -97,14 +107,16 @@ def get_session_token(session: requests.Session, device_id: str, geo: dict) -> s
         "country": "BR",
         "deviceLat": str(geo.get("latitude", -23.5505)),
         "deviceLon": str(geo.get("longitude", -46.6333)),
-        "geoOverride": "BR",
+        "deviceDNT": "false",
+        "serverSideAds": "false",
+        "userId": "",
+        "geoOverride": "BR"
     }
     headers = {
         "User-Agent": USER_AGENT,
-        "Accept": "application/json",
-        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "Referer": "https://pluto.tv/",
         "Origin": "https://pluto.tv",
+        "Accept": "application/json",
     }
     logger.info("Obtendo token de sessão...")
     resp = session.get(BOOT_URL, headers=headers, params=params)
@@ -117,10 +129,10 @@ def get_session_token(session: requests.Session, device_id: str, geo: dict) -> s
     return token
 
 def fetch_seasons(session: requests.Session, series_id: str, token: str) -> dict:
+    """Busca os dados das temporadas e episódios da série."""
     headers = {
         "User-Agent": USER_AGENT,
         "Accept": "application/json",
-        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "Authorization": f"Bearer {token}",
         "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
         "Origin": "https://pluto.tv",
@@ -136,6 +148,7 @@ def fetch_seasons(session: requests.Session, series_id: str, token: str) -> dict
     return resp.json()
 
 def extract_episodes(seasons_data: dict, series_id: str) -> List[dict]:
+    """Extrai e organiza as informações de todos os episódios."""
     series_title = seasons_data.get("name", "Desconhecido")
     episodes = []
     for season in seasons_data.get("seasons", []):
@@ -162,6 +175,7 @@ def extract_episodes(seasons_data: dict, series_id: str) -> List[dict]:
     return episodes
 
 def write_output_file(series_title: str, episodes: List[dict], output_dir: Path):
+    """Salva os episódios em um arquivo .txt."""
     if not episodes:
         logger.warning("Nenhum episódio para salvar.")
         return
@@ -199,22 +213,35 @@ def main():
     geo = config.get("geo", {"latitude": -23.5505, "longitude": -46.6333})
     debug_mode = config.get("debug_mode", True)
 
-    session = requests.Session()
-    session.headers.update({"User-Agent": USER_AGENT})
-
-    if cookies_file:
+    # --- LEITURA DOS COOKIES (CRUCIAL) ---
+    cookie_content = os.environ.get("PLUTO_COOKIES", "")
+    if not cookie_content and cookies_file:
         cookie_path = Path(cookies_file)
         if cookie_path.exists():
             with open(cookie_path, "r", encoding="utf-8") as f:
-                cookies = parse_netscape_cookies(f.read())
-            for name, value in cookies.items():
-                session.cookies.set(name, value, domain=".pluto.tv")
-            logger.info(f"Cookies carregados de {cookies_file}")
+                cookie_content = f.read()
+                logger.info(f"Cookies carregados do arquivo: {cookies_file}")
+
+    if not cookie_content:
+        logger.error("PLUTO_COOKIES não definido no ambiente e arquivo de cookies não encontrado.")
+        sys.exit(1)
+
+    cookies = parse_netscape_cookies(cookie_content)
+    if not cookies:
+        logger.error("Nenhum cookie válido encontrado.")
+        sys.exit(1)
+    # --- FIM DA LEITURA DOS COOKIES ---
+
+    session = requests.Session()
+    session.headers.update({"User-Agent": USER_AGENT})
+    for name, value in cookies.items():
+        session.cookies.set(name, value, domain=".pluto.tv")
 
     device_id = str(uuid.uuid4())
     try:
-        token = get_session_token(session, device_id, geo)
+        token = get_jwt_token(session, device_id, geo)
         seasons_data = fetch_seasons(session, series_id, token)
+
         if debug_mode:
             debug_file = Path("seasons_debug.json")
             with open(debug_file, "w", encoding="utf-8") as f:
