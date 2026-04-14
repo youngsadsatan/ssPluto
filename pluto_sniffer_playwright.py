@@ -13,6 +13,7 @@ import json
 import logging
 import re
 import sys
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -82,9 +83,7 @@ def parse_netscape_cookies(content: str) -> List[Dict]:
 
 def safe_filename(text: str) -> str:
     """Substitui espaços por underline e remove caracteres inválidos."""
-    # Substitui espaços por underline
     text = re.sub(r"\s+", "_", text.strip())
-    # Remove caracteres proibidos em sistemas de arquivos
     text = re.sub(r'[\\/*?:"<>|]', "", text)
     return text or "serie_sem_nome"
 
@@ -116,7 +115,6 @@ def extract_episodes_data(series_data: dict) -> List[dict]:
                 "episode_id": ep_id,
             })
 
-    # Ordena por temporada e número do episódio
     episodes.sort(key=lambda x: (x["season_number"], x["episode_number"]))
     return episodes
 
@@ -131,7 +129,6 @@ def write_output_file(series_title: str, episodes: List[dict], output_dir: Path)
     filepath = output_dir / filename
 
     with open(filepath, "w", encoding="utf-8") as f:
-        # Cabeçalho
         f.write("Series_Title\tSeason_Number\tEpisode_Number\tEpisode_Title\tSeries_ID\tSeason_ID\tEpisode_ID\n")
         for ep in episodes:
             f.write(
@@ -156,7 +153,7 @@ class PlutoSniffer:
         if not self.series_input:
             raise ValueError("Configuração 'series_input' é obrigatória.")
         self.series_id = extract_series_id(self.series_input)
-        self.output_dir = Path(config.get("output_dir", "."))
+        self.output_dir = Path(config.get("output_dir", "./output"))
         self.cookies_file = config.get("cookies_file")
         self.geo = config.get("geo", {"latitude": -23.5505, "longitude": -46.6333})
         self.locale = config.get("locale", "pt-BR")
@@ -172,7 +169,6 @@ class PlutoSniffer:
         if not BOOT_API_PATTERN.search(url):
             return
 
-        # Verifica se a URL contém o seriesID que estamos procurando
         if f"seriesIDs={self.series_id}" not in url:
             return
 
@@ -181,7 +177,6 @@ class PlutoSniffer:
         except Exception:
             return
 
-        # Procura pelo objeto da série dentro de VOD
         vod_list = data.get("VOD", [])
         for item in vod_list:
             if item.get("id") == self.series_id:
@@ -192,9 +187,18 @@ class PlutoSniffer:
     async def run(self):
         """Executa o processo de captura."""
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=self.headless)
+            browser = await p.chromium.launch(
+                headless=self.headless,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-accelerated-2d-canvas",
+                    "--disable-gpu"
+                ]
+            )
             
-            # Configuração do contexto com geolocalização e locale brasileiro
             context_kwargs = {
                 "user_agent": USER_AGENT,
                 "locale": self.locale,
@@ -204,7 +208,6 @@ class PlutoSniffer:
                 "viewport": {"width": 1280, "height": 720},
             }
 
-            # Carrega cookies se fornecidos
             if self.cookies_file:
                 cookie_path = Path(self.cookies_file)
                 if cookie_path.exists():
@@ -217,31 +220,23 @@ class PlutoSniffer:
             context = await browser.new_context(**context_kwargs)
             page = await context.new_page()
 
-            # Registra o listener para capturar respostas da API
             page.on("response", self.handle_response)
 
-            # Navega para a página da série
             series_url = f"https://pluto.tv/br/on-demand/series/{self.series_id}"
             logger.info(f"Acessando {series_url}")
             try:
                 await page.goto(series_url, timeout=self.timeout)
-                # Aguarda um elemento característico da página de série (ex: título)
                 await page.wait_for_selector("h1", timeout=10000)
             except Exception as e:
                 logger.error(f"Erro ao carregar a página: {e}")
-                # Mesmo com erro, pode ser que a resposta da API tenha sido capturada
-                # (em alguns casos a página carrega parcialmente)
 
-            # Aguarda um pouco para garantir que as requisições assíncronas terminem
             await page.wait_for_timeout(3000)
 
             if not self.captured_series_data:
                 logger.error("Não foi possível capturar os dados da série via API.")
-                # Tenta obter via localStorage ou outro meio? (fallback não implementado)
                 await browser.close()
                 sys.exit(1)
 
-            # Processa os dados capturados
             episodes = extract_episodes_data(self.captured_series_data)
             series_title = self.captured_series_data.get("name", "Série Desconhecida")
             write_output_file(series_title, episodes, self.output_dir)
@@ -257,6 +252,11 @@ async def main():
     if len(sys.argv) > 1:
         config["series_input"] = sys.argv[1]
         logger.info(f"Usando argumento da linha de comando: {sys.argv[1]}")
+    # Também verifica variável de ambiente SERIES_INPUT (útil no GitHub Actions)
+    elif os.environ.get("SERIES_INPUT"):
+        config["series_input"] = os.environ["SERIES_INPUT"]
+        logger.info(f"Usando variável de ambiente SERIES_INPUT: {os.environ['SERIES_INPUT']}")
+    
     sniffer = PlutoSniffer(config)
     await sniffer.run()
 
