@@ -6,6 +6,7 @@ SERIES_URL_OR_ID = "66d70dfaf98f52001332a8f5"  #
 import os, re, sys, json, uuid, base64, logging, requests
 from datetime import datetime
 
+# ---------- CONFIGURAÇÃO DE LOG ----------
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG").upper()
 logging.basicConfig(
     level=LOG_LEVEL,
@@ -21,6 +22,7 @@ VOD_API_BASE = "https://service-vod.clusters.pluto.tv/v4/vod"
 
 FIXED_DEVICE_ID = str(uuid.UUID("12345678-1234-5678-1234-567812345678"))
 
+# ---------- FUNÇÕES AUXILIARES ----------
 def parse_netscape_cookies(content):
     cookies = {}
     for line in content.splitlines():
@@ -65,8 +67,9 @@ def get_jwt_token(session, device_id):
         "deviceDNT": "false",
         "serverSideAds": "false",
         "userId": "",
+        "geoOverride": "BR",  # 🔥 Força o uso do catálogo brasileiro
     }
-    logger.debug(f"Obtendo JWT via {BOOT_URL}")
+    logger.debug(f"Obtendo JWT via {BOOT_URL} com geoOverride=BR")
     resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
         "Referer": "https://pluto.tv/",
@@ -103,8 +106,9 @@ def fetch_series_via_boot(session, device_id, jwt_token, series_id):
         "serverSideAds": "false",
         "userId": "",
         "seriesIDs": series_id,
+        "geoOverride": "BR",  # 🔥 Reforça o override
     }
-    logger.debug(f"Tentando obter série via boot com seriesIDs={series_id}")
+    logger.debug(f"Tentando obter série via boot com seriesIDs={series_id} e geoOverride=BR")
     resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
         "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
@@ -122,7 +126,7 @@ def fetch_series_via_boot(session, device_id, jwt_token, series_id):
         if item.get("id") == series_id:
             logger.info("Série encontrada via boot!")
             return item
-    logger.warning("Série não encontrada na resposta boot.")
+    logger.warning("Série não encontrada na resposta boot. IDs disponíveis: " + ", ".join([i.get("id","?") for i in vod_list]))
     return None
 
 def fetch_series_via_vod_api(session, series_id, jwt_token, device_id):
@@ -242,8 +246,10 @@ def main():
     device_id = FIXED_DEVICE_ID
     jwt_token = get_jwt_token(session, device_id)
 
+    # Estratégia 1: boot.pluto.tv
     series_data = fetch_series_via_boot(session, device_id, jwt_token, series_id)
 
+    # Estratégia 2: VOD API (se boot falhar)
     if not series_data:
         logger.info("Tentando abordagem alternativa via VOD API...")
         series_data = fetch_series_via_vod_api(session, series_id, jwt_token, device_id)
@@ -252,7 +258,6 @@ def main():
             series_data["seasons"] = seasons
         else:
             logger.error("VOD API também não encontrou a série. Verifique os logs e o arquivo vod_error.json")
-            
             resp = session.get(f"{VOD_API_BASE}/items", params={"ids": series_id})
             save_debug_response("vod_error.json", resp.text)
 
