@@ -2,7 +2,12 @@ name: Sniffer with Playwright
 
 on:
   workflow_dispatch:
-  
+    inputs:
+      series_input:
+        description: 'ID da série ou URL'
+        required: true
+        default: '66d70dfaf98f52001332a8f5'
+
 permissions:
   contents: write
   actions: read
@@ -17,9 +22,7 @@ jobs:
       - name: Show file structure for debugging
         run: |
           echo "Diretório atual: $(pwd)"
-          echo "Arquivos na raiz:"
           ls -la
-          echo "Procurando config.yml:"
           find . -name "config.yml" || echo "config.yml não encontrado"
 
       - name: Set up Python
@@ -60,6 +63,16 @@ jobs:
           name: pluto-series-data
           path: output/*.txt
           retention-days: 7
+
+      - name: Upload debug files on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-files
+          path: |
+            error_screenshot.png
+            error_page.html
+            captured_responses.json
 
       - name: Commit and push result
         if: github.event_name != 'pull_request'
