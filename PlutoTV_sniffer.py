@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-SERIES_URL_OR_ID = "https://pluto.tv/br/on-demand/series/66d70dfaf98f52001332a8f5"
+SERIES_URL_OR_ID = "66d70dfaf98f52001332a8f5"
 
 import os
 import re
