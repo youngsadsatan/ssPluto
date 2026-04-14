@@ -8,11 +8,14 @@ import re
 import sys
 import os
 import time
+import base64
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 
 import yaml
-from playwright.async_api import async_playwright, BrowserContext, Page, Response, Request, Route
+from playwright.async_api import async_playwright, Page, Response, Request, Route
+import requests
+from bs4 import BeautifulSoup
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -22,14 +25,12 @@ logging.basicConfig(
 logger = logging.getLogger("pluto_sniffer")
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
-BOOT_API_PATTERN = re.compile(r"https?://boot\.pluto\.tv/v4/start")
 SERIES_ID_PATTERN = re.compile(r"[a-f0-9]{24}")
 
 CONFIG_SEARCH_PATHS = [
     Path("config.yml"),
     Path(".github/workflows/config.yml"),
     Path("..") / "config.yml",
-    Path("/home/runner/work") / "config.yml",
 ]
 
 def find_config_file() -> Optional[Path]:
@@ -37,7 +38,7 @@ def find_config_file() -> Optional[Path]:
         if p.exists():
             logger.info(f"Configuração encontrada em: {p.absolute()}")
             return p
-    logger.error("Arquivo config.yml não localizado em nenhum caminho esperado.")
+    logger.error("Arquivo config.yml não localizado.")
     return None
 
 def load_config(config_path: Optional[Path] = None) -> dict:
@@ -53,7 +54,7 @@ def load_config(config_path: Optional[Path] = None) -> dict:
             "locale": "pt-BR",
             "timezone": "America/Sao_Paulo",
             "headless": True,
-            "timeout": 45000,
+            "timeout": 60000,
             "debug_mode": True
         }
     with open(config_path, "r", encoding="utf-8") as f:
@@ -97,7 +98,30 @@ def safe_filename(text: str) -> str:
     text = re.sub(r'[\\/*?:"<>|]', "", text)
     return text or "serie_sem_nome"
 
-def extract_episodes_data(series_data: dict) -> List[dict]:
+def extract_episodes_from_data(data: dict, series_id: str) -> Optional[dict]:
+    if not isinstance(data, dict):
+        return None
+    for key in ["VOD", "vod", "series", "item", "data"]:
+        if key in data:
+            for item in data[key] if isinstance(data[key], list) else [data[key]]:
+                if isinstance(item, dict) and item.get("id") == series_id:
+                    return item
+    if data.get("id") == series_id and "seasons" in data:
+        return data
+    for value in data.values():
+        if isinstance(value, dict):
+            result = extract_episodes_from_data(value, series_id)
+            if result:
+                return result
+        elif isinstance(value, list):
+            for v in value:
+                if isinstance(v, dict):
+                    result = extract_episodes_from_data(v, series_id)
+                    if result:
+                        return result
+    return None
+
+def extract_episodes_info(series_data: dict) -> List[dict]:
     series_title = series_data.get("name", "Desconhecido")
     series_id = series_data.get("id", "")
     episodes = []
@@ -158,57 +182,118 @@ class PlutoSniffer:
         self.locale = config.get("locale", "pt-BR")
         self.timezone = config.get("timezone", "America/Sao_Paulo")
         self.headless = config.get("headless", True)
-        self.timeout = config.get("timeout", 45000)
-        self.debug_mode = config.get("debug_mode", False)
+        self.timeout = config.get("timeout", 60000)
+        self.debug_mode = config.get("debug_mode", True)
 
         self.captured_series_data: Optional[dict] = None
         self.captured_responses: List[dict] = []
+        self.captured_requests: List[Request] = []
+        self.cookies_from_browser: List[Dict] = []
+        self.local_storage: Dict = {}
 
     async def handle_response(self, response: Response):
         url = response.url
-        logger.debug(f"Resposta recebida: {response.status} {url}")
-        if BOOT_API_PATTERN.search(url):
-            logger.info(f"Resposta da API boot interceptada: {url}")
+        content_type = response.headers.get("content-type", "")
+        logger.debug(f"Response: {response.status} {url} [{content_type}]")
+        if "application/json" in content_type or "text/plain" in content_type:
             try:
                 data = await response.json()
-                self.captured_responses.append(data)
-                vod_list = data.get("VOD", [])
-                for item in vod_list:
-                    if item.get("id") == self.series_id:
-                        self.captured_series_data = item
-                        logger.info("Dados da série capturados via API boot!")
-                        return
-            except Exception as e:
-                logger.error(f"Erro ao processar JSON da resposta: {e}")
+                self.captured_responses.append({"url": url, "data": data})
+                if "seasons" in json.dumps(data) and "episodes" in json.dumps(data):
+                    logger.info(f"Resposta com episódios detectada: {url}")
+                    series = extract_episodes_from_data(data, self.series_id)
+                    if series:
+                        self.captured_series_data = series
+                        logger.info("Dados da série extraídos de resposta JSON.")
+            except:
+                pass
 
-    async def handle_route(self, route: Route, request: Request):
-        logger.debug(f"Requisição: {request.method} {request.url}")
-        await route.continue_()
+    async def handle_request(self, request: Request):
+        self.captured_requests.append(request)
 
-    async def extract_from_dom(self, page: Page) -> Optional[dict]:
-        logger.info("Tentando extrair dados do DOM (__INITIAL_STATE__)...")
-        try:
-            state = await page.evaluate("() => window.__INITIAL_STATE__")
-            if state and isinstance(state, dict):
-                vod = state.get("vod", {})
-                series = vod.get("series", {})
-                if series and series.get("id") == self.series_id:
-                    logger.info("Dados da série extraídos do __INITIAL_STATE__ com sucesso!")
-                    return series
-        except Exception as e:
-            logger.error(f"Falha ao extrair do DOM: {e}")
-        try:
-            script_content = await page.evaluate("() => { const s = document.querySelector('script[type=\"application/json\"]'); return s ? s.textContent : null; }")
-            if script_content:
-                data = json.loads(script_content)
-                if isinstance(data, dict):
-                    vod = data.get("vod", {})
-                    series = vod.get("series", {})
-                    if series and series.get("id") == self.series_id:
-                        logger.info("Dados da série extraídos de tag script JSON com sucesso!")
+    async def extract_from_all_dom_sources(self, page: Page) -> Optional[dict]:
+        logger.info("Vasculhando DOM por dados embutidos...")
+        sources_to_try = [
+            "window.__INITIAL_STATE__",
+            "window.__NEXT_DATA__",
+            "window.__PRELOADED_STATE__",
+            "window.__APOLLO_STATE__",
+            "window.__REDUX_STATE__",
+            "window.__STATE__",
+            "window.__DATA__",
+        ]
+        for var in sources_to_try:
+            try:
+                state = await page.evaluate(f"() => {var}")
+                if state:
+                    logger.info(f"Dados encontrados em {var}")
+                    series = extract_episodes_from_data(state, self.series_id)
+                    if series:
                         return series
-        except Exception as e:
-            logger.error(f"Falha ao extrair de script JSON: {e}")
+            except:
+                pass
+        try:
+            script_tags = await page.evaluate("""() => {
+                const scripts = Array.from(document.querySelectorAll('script[type="application/json"], script[type="text/json"], script[type="application/ld+json"]'));
+                return scripts.map(s => s.textContent);
+            }""")
+            for content in script_tags:
+                try:
+                    data = json.loads(content)
+                    series = extract_episodes_from_data(data, self.series_id)
+                    if series:
+                        logger.info("Dados extraídos de tag script JSON.")
+                        return series
+                except:
+                    pass
+        except:
+            pass
+        return None
+
+    async def fallback_direct_api_call(self) -> Optional[dict]:
+        logger.info("Tentando fallback: chamada direta à API boot com requests...")
+        cookies_dict = {c["name"]: c["value"] for c in self.cookies_from_browser}
+        headers = {
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": f"https://pluto.tv/br/on-demand/series/{self.series_id}",
+            "Origin": "https://pluto.tv",
+        }
+        params = {
+            "appName": "web",
+            "appVersion": "9.20.0-89258290264838515e264f5b051b7c1602a58482",
+            "deviceType": "web",
+            "deviceMake": "firefox",
+            "deviceModel": "web",
+            "deviceVersion": "149.0",
+            "clientID": str(uuid.uuid4()) if "uuid" in sys.modules else "test-client-id",
+            "deviceId": "test-device-id",
+            "sessionID": "test-session-id",
+            "marketingRegion": "BR",
+            "country": "BR",
+            "deviceLat": str(self.geo["latitude"]),
+            "deviceLon": str(self.geo["longitude"]),
+            "seriesIDs": self.series_id,
+            "geoOverride": "BR",
+        }
+        try:
+            import uuid
+            params["clientID"] = str(uuid.uuid4())
+            params["deviceId"] = params["clientID"]
+            params["sessionID"] = params["clientID"]
+        except:
+            pass
+        session = requests.Session()
+        for name, value in cookies_dict.items():
+            session.cookies.set(name, value, domain=".pluto.tv")
+        resp = session.get("https://boot.pluto.tv/v4/start", headers=headers, params=params, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            series = extract_episodes_from_data(data, self.series_id)
+            if series:
+                logger.info("Dados obtidos via fallback direto com sucesso!")
+                return series
         return None
 
     async def run(self):
@@ -222,15 +307,9 @@ class PlutoSniffer:
                 "--disable-gpu",
                 "--disable-web-security",
                 "--disable-features=IsolateOrigins,site-per-process",
-                "--disable-site-isolation-trials",
                 "--window-size=1920,1080",
             ]
-            if self.debug_mode:
-                launch_args.append("--auto-open-devtools-for-tabs")
-            browser = await p.chromium.launch(
-                headless=self.headless,
-                args=launch_args
-            )
+            browser = await p.chromium.launch(headless=self.headless, args=launch_args)
 
             context_kwargs = {
                 "user_agent": USER_AGENT,
@@ -241,7 +320,6 @@ class PlutoSniffer:
                 "viewport": {"width": 1280, "height": 720},
                 "extra_http_headers": {
                     "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-                    "Accept-Encoding": "gzip, deflate, br",
                     "Referer": "https://pluto.tv/",
                     "Origin": "https://pluto.tv",
                 }
@@ -260,52 +338,56 @@ class PlutoSniffer:
             page = await context.new_page()
 
             page.on("response", self.handle_response)
-            await page.route("**/*", self.handle_route)
+            page.on("request", self.handle_request)
 
-            series_url = f"https://pluto.tv/br/on-demand/series/{self.series_id}"
+            await page.route("**/*", lambda route: route.continue_())
+
+            series_url = f"https://pluto.tv/br/on-demand/series/{self.series_id}?lang=pt"
             logger.info(f"Acessando {series_url}")
             try:
-                response = await page.goto(series_url, timeout=self.timeout, wait_until="domcontentloaded")
-                logger.info(f"Página carregada com status {response.status if response else 'desconhecido'}")
-                await page.wait_for_selector("h1", timeout=15000)
-                logger.info("Elemento H1 encontrado na página.")
+                response = await page.goto(series_url, timeout=self.timeout, wait_until="networkidle")
+                logger.info(f"Status: {response.status if response else 'desconhecido'}")
             except Exception as e:
-                logger.error(f"Erro ao carregar a página: {e}")
+                logger.error(f"Erro ao carregar página: {e}")
 
-            await page.wait_for_timeout(5000)
+            await page.wait_for_timeout(8000)
+
+            for _ in range(3):
+                await page.evaluate("window.scrollBy(0, document.body.scrollHeight)")
+                await page.wait_for_timeout(2000)
+
+            self.cookies_from_browser = await context.cookies()
+            self.local_storage = await page.evaluate("() => JSON.parse(JSON.stringify(localStorage))")
 
             if not self.captured_series_data:
-                logger.warning("API não capturada, tentando extrair do DOM...")
-                dom_data = await self.extract_from_dom(page)
-                if dom_data:
-                    self.captured_series_data = dom_data
+                self.captured_series_data = await self.extract_from_all_dom_sources(page)
 
             if not self.captured_series_data and self.captured_responses:
-                logger.info("Procurando dados da série nas respostas capturadas...")
-                for resp_data in self.captured_responses:
-                    vod_list = resp_data.get("VOD", [])
-                    for item in vod_list:
-                        if item.get("id") == self.series_id:
-                            self.captured_series_data = item
-                            logger.info("Dados encontrados em resposta armazenada.")
-                            break
-                    if self.captured_series_data:
+                logger.info("Procurando em respostas capturadas...")
+                for item in self.captured_responses:
+                    series = extract_episodes_from_data(item["data"], self.series_id)
+                    if series:
+                        self.captured_series_data = series
                         break
 
             if not self.captured_series_data:
-                logger.error("Não foi possível capturar os dados da série por nenhum método.")
+                logger.warning("Nenhum dado encontrado via navegador. Tentando fallback direto...")
+                self.captured_series_data = await self.fallback_direct_api_call()
+
+            if not self.captured_series_data:
+                logger.error("Falha total: dados da série não localizados.")
                 if self.debug_mode:
-                    screenshot_path = "error_screenshot.png"
-                    await page.screenshot(path=screenshot_path, full_page=True)
-                    logger.info(f"Screenshot salva em {screenshot_path}")
-                    html_content = await page.content()
+                    await page.screenshot(path="error_screenshot.png", full_page=True)
+                    html = await page.content()
                     with open("error_page.html", "w", encoding="utf-8") as f:
-                        f.write(html_content)
-                    logger.info("HTML da página salvo em error_page.html")
+                        f.write(html)
+                    with open("captured_responses.json", "w", encoding="utf-8") as f:
+                        json.dump(self.captured_responses, f, indent=2, default=str)
+                    logger.info("Arquivos de debug salvos.")
                 await browser.close()
                 sys.exit(1)
 
-            episodes = extract_episodes_data(self.captured_series_data)
+            episodes = extract_episodes_info(self.captured_series_data)
             series_title = self.captured_series_data.get("name", "Série Desconhecida")
             write_output_file(series_title, episodes, self.output_dir)
 
@@ -315,11 +397,8 @@ async def main():
     config = load_config()
     if len(sys.argv) > 1:
         config["series_input"] = sys.argv[1]
-        logger.info(f"Argumento de linha de comando: {sys.argv[1]}")
     elif os.environ.get("SERIES_INPUT"):
         config["series_input"] = os.environ["SERIES_INPUT"]
-        logger.info(f"Variável SERIES_INPUT: {os.environ['SERIES_INPUT']}")
-
     sniffer = PlutoSniffer(config)
     await sniffer.run()
 
@@ -327,7 +406,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Execução interrompida.")
+        logger.info("Interrompido.")
         sys.exit(0)
     except Exception as e:
         logger.exception("Erro fatal.")
