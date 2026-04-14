@@ -1,0 +1,629 @@
+{
+  "series_title": "Arnold: Minha Família é uma bagunça",
+  "series_id": "620d476a1990720013c6d10c",
+  "episodes": [
+    {
+      "season": 1,
+      "episode": 1,
+      "slug": "S01E01",
+      "title": "Movendo-se",
+      "episode_id": "620faa805231f2001386d47e"
+    },
+    {
+      "season": 1,
+      "episode": 2,
+      "slug": "S01E02",
+      "title": "O Assistente Social",
+      "episode_id": "620faa845231f2001386d689"
+    },
+    {
+      "season": 1,
+      "episode": 3,
+      "slug": "S01E03",
+      "title": "A última visita da mãe",
+      "episode_id": "620faa845231f2001386d581"
+    },
+    {
+      "season": 1,
+      "episode": 4,
+      "slug": "S01E04",
+      "title": "A palmada",
+      "episode_id": "620faa845231f2001386d5e4"
+    },
+    {
+      "season": 1,
+      "episode": 5,
+      "slug": "S01E05",
+      "title": "Escola Preparatória",
+      "episode_id": "620faa835231f2001386d4c1"
+    },
+    {
+      "season": 1,
+      "episode": 6,
+      "slug": "S01E06",
+      "title": "Adeus, boneca",
+      "episode_id": "620faa805231f2001386d4a8"
+    },
+    {
+      "season": 1,
+      "episode": 7,
+      "slug": "S01E07",
+      "title": "O Julgamento",
+      "episode_id": "620faa845231f2001386d526"
+    },
+    {
+      "season": 1,
+      "episode": 8,
+      "slug": "S01E08",
+      "title": "A luta",
+      "episode_id": "620faa845231f2001386d5be"
+    },
+    {
+      "season": 1,
+      "episode": 9,
+      "slug": "S01E09",
+      "title": "A reunião do clube",
+      "episode_id": "620faa845231f2001386d5fb"
+    },
+    {
+      "season": 1,
+      "episode": 10,
+      "slug": "S01E10",
+      "title": "A Mulher",
+      "episode_id": "620faa845231f2001386d648"
+    },
+    {
+      "season": 1,
+      "episode": 11,
+      "slug": "S01E11",
+      "title": "Sem tempo para Arnold",
+      "episode_id": "620faa845231f2001386d5d1"
+    },
+    {
+      "season": 1,
+      "episode": 12,
+      "slug": "S01E12",
+      "title": "O relativo",
+      "episode_id": "620faa845231f2001386d634"
+    },
+    {
+      "season": 1,
+      "episode": 13,
+      "slug": "S01E13",
+      "title": "O tutor",
+      "episode_id": "620faa835231f2001386d4d4"
+    },
+    {
+      "season": 1,
+      "episode": 14,
+      "slug": "S01E14",
+      "title": "O novo Proprietário",
+      "episode_id": "620faa845231f2001386d56e"
+    },
+    {
+      "season": 1,
+      "episode": 15,
+      "slug": "S01E15",
+      "title": "Privacidade de Willis",
+      "episode_id": "620faa845231f2001386d69c"
+    },
+    {
+      "season": 1,
+      "episode": 16,
+      "slug": "S01E16",
+      "title": "Especial de uma hora",
+      "episode_id": "620faa845231f2001386d65b"
+    },
+    {
+      "season": 1,
+      "episode": 17,
+      "slug": "S01E17",
+      "title": "A Crise da Sra. Garrett",
+      "episode_id": "620faa845231f2001386d621"
+    },
+    {
+      "season": 1,
+      "episode": 18,
+      "slug": "S01E18",
+      "title": "O emprego",
+      "episode_id": "620faa845231f2001386d676"
+    },
+    {
+      "season": 1,
+      "episode": 19,
+      "slug": "S01E19",
+      "title": "O Assalto",
+      "episode_id": "620faa845231f2001386d60e"
+    },
+    {
+      "season": 1,
+      "episode": 20,
+      "slug": "S01E20",
+      "title": "A Viagem",
+      "episode_id": "620faa845231f2001386d594"
+    },
+    {
+      "season": 1,
+      "episode": 21,
+      "slug": "S01E21",
+      "title": "Aniversário de Willis",
+      "episode_id": "620faa845231f2001386d5a7"
+    },
+    {
+      "season": 1,
+      "episode": 22,
+      "slug": "S01E22",
+      "title": "A Escola de Meninas",
+      "episode_id": "620faa805231f2001386d494"
+    },
+    {
+      "season": 2,
+      "episode": 1,
+      "slug": "S02E01",
+      "title": "Herói de Arnold",
+      "episode_id": "620faa615231f2001386c841"
+    },
+    {
+      "season": 2,
+      "episode": 2,
+      "slug": "S02E02",
+      "title": "A Namorada de Arnold - Parte 1",
+      "episode_id": "620faa5e5231f2001386c6c2"
+    },
+    {
+      "season": 2,
+      "episode": 3,
+      "slug": "S02E03",
+      "title": "A Namorada de Arnold - Parte 2",
+      "episode_id": "620faa615231f2001386c78e"
+    },
+    {
+      "season": 2,
+      "episode": 5,
+      "slug": "S02E05",
+      "title": "O Romance da Sra. Garrett",
+      "episode_id": "620faa635231f2001386c975"
+    },
+    {
+      "season": 2,
+      "episode": 6,
+      "slug": "S02E06",
+      "title": "A Adoção - parte 1",
+      "episode_id": "620faa635231f2001386c99b"
+    },
+    {
+      "season": 2,
+      "episode": 7,
+      "slug": "S02E07",
+      "title": "A Adoção - parte 2",
+      "episode_id": "620faa635231f2001386c962"
+    },
+    {
+      "season": 2,
+      "episode": 8,
+      "slug": "S02E08",
+      "title": "Aves e abelhas",
+      "episode_id": "620faa635231f2001386c9ae"
+    },
+    {
+      "season": 2,
+      "episode": 9,
+      "slug": "S02E09",
+      "title": "Dia de pai e filho",
+      "episode_id": "620faa625231f2001386c898"
+    },
+    {
+      "season": 2,
+      "episode": 10,
+      "slug": "S02E10",
+      "title": "Os Rivais",
+      "episode_id": "620faa635231f2001386ca20"
+    },
+    {
+      "season": 2,
+      "episode": 11,
+      "slug": "S02E11",
+      "title": "Thanksgiving Crossover",
+      "episode_id": "6213dd31cfd5ce00082b751f"
+    },
+    {
+      "season": 2,
+      "episode": 12,
+      "slug": "S02E12",
+      "title": "Relógio quente",
+      "episode_id": "620faa635231f2001386c988"
+    },
+    {
+      "season": 2,
+      "episode": 13,
+      "slug": "S02E13",
+      "title": "A história do cachorro",
+      "episode_id": "620faa635231f2001386ca0d"
+    },
+    {
+      "season": 2,
+      "episode": 14,
+      "slug": "S02E14",
+      "title": "A eleição",
+      "episode_id": "620faa625231f2001386c857"
+    },
+    {
+      "season": 2,
+      "episode": 15,
+      "slug": "S02E15",
+      "title": "Friendly Mate",
+      "episode_id": "620faa625231f2001386c8ab"
+    },
+    {
+      "season": 2,
+      "episode": 16,
+      "slug": "S02E16",
+      "title": "Big Business",
+      "episode_id": "620faa635231f2001386c9e7"
+    },
+    {
+      "season": 2,
+      "episode": 17,
+      "slug": "S02E17",
+      "title": "Poor Drummond",
+      "episode_id": "620faa605231f2001386c762"
+    },
+    {
+      "season": 2,
+      "episode": 18,
+      "slug": "S02E18",
+      "title": "Return Of The Gooch",
+      "episode_id": "620faa615231f2001386c77b"
+    },
+    {
+      "season": 2,
+      "episode": 20,
+      "slug": "S02E20",
+      "title": "Teacher's Pet",
+      "episode_id": "620faa635231f2001386c9d4"
+    },
+    {
+      "season": 2,
+      "episode": 21,
+      "slug": "S02E21",
+      "title": "Guess Who?",
+      "episode_id": "620faa5e5231f2001386c6e7"
+    },
+    {
+      "season": 2,
+      "episode": 23,
+      "slug": "S02E23",
+      "title": "Will, The",
+      "episode_id": "620faa625231f2001386c86b"
+    },
+    {
+      "season": 2,
+      "episode": 24,
+      "slug": "S02E24",
+      "title": "Squealer, The",
+      "episode_id": "620faa635231f2001386c9c1"
+    },
+    {
+      "season": 3,
+      "episode": 1,
+      "slug": "S03E01",
+      "title": "O Mágico",
+      "episode_id": "621636ad33b8100013bc54ce"
+    },
+    {
+      "season": 3,
+      "episode": 2,
+      "slug": "S03E02",
+      "title": "O Roubo do Banco Parte 1",
+      "episode_id": "621636ad33b8100013bc54a8"
+    },
+    {
+      "season": 3,
+      "episode": 3,
+      "slug": "S03E03",
+      "title": "O Roubo do Banco Parte 2",
+      "episode_id": "621636a933b8100013bc51d4"
+    },
+    {
+      "season": 3,
+      "episode": 4,
+      "slug": "S03E04",
+      "title": "O Jogador de Futebol",
+      "episode_id": "621636ab33b8100013bc52c9"
+    },
+    {
+      "season": 3,
+      "episode": 5,
+      "slug": "S03E05",
+      "title": "A Corte de pequenas causas",
+      "episode_id": "621636ad33b8100013bc5482"
+    },
+    {
+      "season": 3,
+      "episode": 6,
+      "slug": "S03E06",
+      "title": "Mãe substituta",
+      "episode_id": "621636ab33b8100013bc52b6"
+    },
+    {
+      "season": 3,
+      "episode": 7,
+      "slug": "S03E07",
+      "title": "O Acidente Parte 1",
+      "episode_id": "621636ad33b8100013bc5540"
+    },
+    {
+      "season": 3,
+      "episode": 8,
+      "slug": "S03E08",
+      "title": "O Acidente Parte 2",
+      "episode_id": "621636ac33b8100013bc5395"
+    },
+    {
+      "season": 3,
+      "episode": 9,
+      "slug": "S03E09",
+      "title": "Conte suas bênçãos",
+      "episode_id": "621636ad33b8100013bc546f"
+    },
+    {
+      "season": 3,
+      "episode": 10,
+      "slug": "S03E10",
+      "title": "Mãezinha",
+      "episode_id": "621636a733b8100013bc51be"
+    },
+    {
+      "season": 3,
+      "episode": 11,
+      "slug": "S03E11",
+      "title": "Primeiro Amor",
+      "episode_id": "621636ad33b8100013bc5495"
+    },
+    {
+      "season": 3,
+      "episode": 12,
+      "slug": "S03E12",
+      "title": "O Emprestimo",
+      "episode_id": "621636ad33b8100013bc54e1"
+    },
+    {
+      "season": 3,
+      "episode": 13,
+      "slug": "S03E13",
+      "title": "Raizes",
+      "episode_id": "621636ad33b8100013bc54f4"
+    },
+    {
+      "season": 3,
+      "episode": 14,
+      "slug": "S03E14",
+      "title": "Viciado em guloseimas",
+      "episode_id": "621636a933b8100013bc5299"
+    },
+    {
+      "season": 3,
+      "episode": 15,
+      "slug": "S03E15",
+      "title": "O ônibus",
+      "episode_id": "621636ad33b8100013bc5447"
+    },
+    {
+      "season": 3,
+      "episode": 16,
+      "slug": "S03E16",
+      "title": "o Homem mais velho",
+      "episode_id": "621636a933b8100013bc51e8"
+    },
+    {
+      "season": 3,
+      "episode": 17,
+      "slug": "S03E17",
+      "title": "Onde há esperança",
+      "episode_id": "621636a633b8100013bc51a5"
+    },
+    {
+      "season": 3,
+      "episode": 18,
+      "slug": "S03E18",
+      "title": "Quase Norte Americano",
+      "episode_id": "621636ad33b8100013bc5507"
+    },
+    {
+      "season": 3,
+      "episode": 19,
+      "slug": "S03E19",
+      "title": "Minha Bela Dama",
+      "episode_id": "621636ad33b8100013bc54bb"
+    },
+    {
+      "season": 3,
+      "episode": 20,
+      "slug": "S03E20",
+      "title": "O Ancestral",
+      "episode_id": "621636ad33b8100013bc552d"
+    },
+    {
+      "season": 3,
+      "episode": 21,
+      "slug": "S03E21",
+      "title": "Espaço para mais um",
+      "episode_id": "621636a633b8100013bc5192"
+    },
+    {
+      "season": 3,
+      "episode": 22,
+      "slug": "S03E22",
+      "title": "Crescendo",
+      "episode_id": "621636ad33b8100013bc545c"
+    },
+    {
+      "season": 3,
+      "episode": 23,
+      "slug": "S03E23",
+      "title": "Modelo",
+      "episode_id": "621636ab33b8100013bc537e"
+    },
+    {
+      "season": 3,
+      "episode": 24,
+      "slug": "S03E24",
+      "title": "O Atleta",
+      "episode_id": "621636ad33b8100013bc551a"
+    },
+    {
+      "season": 4,
+      "episode": 1,
+      "slug": "S04E01",
+      "title": "Fim de semana de esqui",
+      "episode_id": "6216371ca1a84900140b3c7d"
+    },
+    {
+      "season": 4,
+      "episode": 2,
+      "slug": "S04E02",
+      "title": "Blues do primeiro dia",
+      "episode_id": "6216371aa1a84900140b3bdf"
+    },
+    {
+      "season": 4,
+      "episode": 3,
+      "slug": "S04E03",
+      "title": "O time",
+      "episode_id": "62163715a1a84900140b3abb"
+    },
+    {
+      "season": 4,
+      "episode": 4,
+      "slug": "S04E04",
+      "title": "Olá Papai",
+      "episode_id": "62163716a1a84900140b3afd"
+    },
+    {
+      "season": 4,
+      "episode": 5,
+      "slug": "S04E05",
+      "title": "O Grande Assalto",
+      "episode_id": "6216371da1a84900140b3cce"
+    },
+    {
+      "season": 4,
+      "episode": 6,
+      "slug": "S04E06",
+      "title": "Encontro duplo",
+      "episode_id": "6216371da1a84900140b3d07"
+    },
+    {
+      "season": 4,
+      "episode": 7,
+      "slug": "S04E07",
+      "title": "Academia",
+      "episode_id": "6216371ca1a84900140b3c31"
+    },
+    {
+      "season": 4,
+      "episode": 8,
+      "slug": "S04E08",
+      "title": "Abandonada",
+      "episode_id": "6216371da1a84900140b3ca8"
+    },
+    {
+      "season": 4,
+      "episode": 9,
+      "slug": "S04E09",
+      "title": "Cemitério",
+      "episode_id": "6216371ca1a84900140b3c57"
+    },
+    {
+      "season": 4,
+      "episode": 10,
+      "slug": "S04E10",
+      "title": "O Invasor",
+      "episode_id": "6216371da1a84900140b3cbb"
+    },
+    {
+      "season": 4,
+      "episode": 11,
+      "slug": "S04E11",
+      "title": "Kathy",
+      "episode_id": "6216371da1a84900140b3cf4"
+    },
+    {
+      "season": 4,
+      "episode": 12,
+      "slug": "S04E12",
+      "title": "Sonhos",
+      "episode_id": "6216371da1a84900140b3ce1"
+    },
+    {
+      "season": 4,
+      "episode": 13,
+      "slug": "S04E13",
+      "title": "Incêndio",
+      "episode_id": "6216371ca1a84900140b3c44"
+    },
+    {
+      "season": 4,
+      "episode": 14,
+      "slug": "S04E14",
+      "title": "O carro",
+      "episode_id": "6216371aa1a84900140b3bb9"
+    },
+    {
+      "season": 4,
+      "episode": 15,
+      "slug": "S04E15",
+      "title": "Crime nas escolas - parte 1",
+      "episode_id": "6216371da1a84900140b3d1d"
+    },
+    {
+      "season": 4,
+      "episode": 16,
+      "slug": "S04E16",
+      "title": "Crime nas escolas - parte 2",
+      "episode_id": "6216371da1a84900140b3d30"
+    },
+    {
+      "season": 4,
+      "episode": 17,
+      "slug": "S04E17",
+      "title": "B.m.o.c.",
+      "episode_id": "6216371ba1a84900140b3c15"
+    },
+    {
+      "season": 4,
+      "episode": 18,
+      "slug": "S04E18",
+      "title": "Cabelo verde",
+      "episode_id": "6216371da1a84900140b3c95"
+    },
+    {
+      "season": 4,
+      "episode": 19,
+      "slug": "S04E19",
+      "title": "Eu tenho uma garota para você",
+      "episode_id": "6216371aa1a84900140b3bcc"
+    },
+    {
+      "season": 4,
+      "episode": 20,
+      "slug": "S04E20",
+      "title": "Salva-vidas",
+      "episode_id": "62163716a1a84900140b3ae7"
+    },
+    {
+      "season": 4,
+      "episode": 21,
+      "slug": "S04E21",
+      "title": "Estresse? Que Estresse?",
+      "episode_id": "62163715a1a84900140b3ace"
+    },
+    {
+      "season": 4,
+      "episode": 22,
+      "slug": "S04E22",
+      "title": "O Homem da Música",
+      "episode_id": "6216371ca1a84900140b3c6a"
+    }
+  ]
+}
