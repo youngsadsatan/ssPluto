@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Pluto TV Sniffer - Versão Estável
-Obtém os dados completos da série através de uma segunda chamada ao boot com seriesIDs.
-"""
-
 import json
 import logging
 import re
@@ -19,7 +14,7 @@ import requests
 import yaml
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler(sys.stderr)]
 )
@@ -50,7 +45,7 @@ def load_config(config_path: Optional[Path] = None) -> dict:
             "output_dir": "./output",
             "cookies_file": "",
             "geo": {"latitude": -29.7800, "longitude": -55.8000},
-            "debug_mode": True
+            "debug_mode": False
         }
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
@@ -83,7 +78,6 @@ def safe_filename(text: str) -> str:
     return text or "serie_sem_nome"
 
 def get_jwt_token(session: requests.Session, device_id: str, geo: dict) -> str:
-    """Primeira chamada ao boot para obter o token de sessão (sem seriesIDs)."""
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -112,18 +106,16 @@ def get_jwt_token(session: requests.Session, device_id: str, geo: dict) -> str:
         "CloudFront-Viewer-Country": "BR",
         "X-Forwarded-For": "177.0.0.1"
     }
-    logger.info("Obtendo token JWT inicial...")
+    logger.info("Obtendo token JWT...")
     resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
     data = resp.json()
     token = data.get("sessionToken")
     if not token:
         raise ValueError("sessionToken não encontrado.")
-    logger.info("Token obtido com sucesso.")
     return token
 
 def fetch_series_data(session: requests.Session, device_id: str, series_id: str, geo: dict) -> dict:
-    """Segunda chamada ao boot, agora incluindo seriesIDs, para obter os dados completos da série."""
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -153,30 +145,44 @@ def fetch_series_data(session: requests.Session, device_id: str, series_id: str,
         "CloudFront-Viewer-Country": "BR",
         "X-Forwarded-For": "177.0.0.1"
     }
-    logger.info(f"Obtendo dados da série via boot com seriesIDs={series_id}...")
+    logger.info(f"Obtendo dados da série...")
     resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
     data = resp.json()
     vod_list = data.get("VOD", [])
     for item in vod_list:
         if item.get("id") == series_id:
-            logger.info("Dados da série encontrados no campo VOD.")
             return item
     raise ValueError("Série não encontrada na resposta VOD.")
 
 def extract_episodes(series_data: dict, series_id: str) -> List[dict]:
     series_title = series_data.get("name", "Desconhecido")
     episodes = []
-    for season in series_data.get("seasons", []):
-        season_num = season.get("seasonNumber")
+    seasons = series_data.get("seasons", [])
+    
+    if not seasons and "episodes" in series_data:
+        seasons = [{"number": 1, "_id": "", "episodes": series_data["episodes"]}]
+    
+    for idx, season in enumerate(seasons, start=1):
+        season_num = season.get("number") or season.get("seasonNumber")
         if season_num is None:
-            season_num = 0
-        season_id = season.get("_id", "")
+            season_num = idx
+        else:
+            try:
+                season_num = int(season_num)
+            except:
+                season_num = idx
+        season_id = season.get("_id", "") or season.get("id", "")
+        
         for ep in season.get("episodes", []):
             ep_id = ep.get("_id")
-            ep_num = ep.get("number")
+            ep_num = ep.get("number") or ep.get("episodeNumber")
             if not ep_id or ep_num is None:
                 continue
+            try:
+                ep_num = int(ep_num)
+            except:
+                pass
             episodes.append({
                 "series_title": series_title,
                 "series_id": series_id,
@@ -225,7 +231,7 @@ def main():
     output_dir = Path(config.get("output_dir", "./output"))
     cookies_file = config.get("cookies_file")
     geo = config.get("geo", {"latitude": -29.7800, "longitude": -55.8000})
-    debug_mode = config.get("debug_mode", True)
+    debug_mode = config.get("debug_mode", False)
 
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content and cookies_file:
@@ -249,9 +255,7 @@ def main():
 
     device_id = str(uuid.uuid4())
     try:
-        # Passo 1: obter token (sem seriesIDs, mas os cookies já autenticam)
         token = get_jwt_token(session, device_id, geo)
-        # Passo 2: obter dados da série (com seriesIDs)
         series_data = fetch_series_data(session, device_id, series_id, geo)
 
         if debug_mode:
