@@ -14,9 +14,10 @@ log = logging.getLogger(__name__)
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
+CATALOG_SERIES_URL = "https://service-vod.clusters.pluto.tv/v4/vod/series/{series_id}/seasons"
 
 SERIES_IDS = [
-    "66d70dfaf98f52001332a8f5",
+    "66d70dfaf98f52001332a8f5",  # Tratamento de Choque
 ]
 
 def parse_netscape_cookies(content):
@@ -68,59 +69,28 @@ def get_jwt_token(session, device_id):
         raise ValueError("sessionToken missing")
     return token
 
-def fetch_series_data(session, device_id, jwt_token, series_id):
-    params = {
-        "appName": "web",
-        "appVersion": FIXED_APP_VERSION,
-        "clientModelNumber": "1.0.0",
-        "deviceType": "web",
-        "deviceMake": "firefox",
-        "deviceModel": "web",
-        "deviceVersion": "149.0",
-        "clientID": device_id,
-        "deviceId": device_id,
-        "sessionID": device_id,
-        "marketingRegion": "BR",
-        "country": "BR",
-        "deviceLat": "-29.7800",
-        "deviceLon": "-55.8000",
-        "deviceDNT": "false",
-        "serverSideAds": "false",
-        "userId": "",
-        "seriesIDs": series_id,
-        "geoOverride": "BR",
-    }
-    resp = session.get(BOOT_URL, headers={
+def fetch_series_episodes(session, jwt_token, series_id):
+    headers = {
         "User-Agent": USER_AGENT,
-        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
-        "Origin": "https://pluto.tv",
+        "Authorization": f"Bearer {jwt_token}",
         "Accept": "application/json",
-    }, params=params)
+    }
+    url = CATALOG_SERIES_URL.format(series_id=series_id)
+    resp = session.get(url, headers=headers)
     resp.raise_for_status()
     return resp.json()
 
-def extract_episodes(series_data, series_id):
+def extract_episodes(series_data):
     episodes = []
-    vod_list = series_data.get("VOD", [])
-    target_vod = None
-    for vod in vod_list:
-        if vod.get("id") == series_id:
-            target_vod = vod
-            break
-    if not target_vod:
-        log.warning("Series %s not found in VOD list", series_id)
-        return episodes
-
-    for season in target_vod.get("seasons", []):
+    for season in series_data.get("seasons", []):
         season_num = season.get("seasonNumber")
         if season_num is None:
             continue
         for ep in season.get("episodes", []):
-            ep_id = ep.get("_id")
+            ep_id = ep.get("id") or ep.get("_id")
             if not ep_id:
                 continue
             ep_title = ep.get("name", "Sem título")
-            # A API pode fornecer "episodeNumber" ou "number"
             ep_number = ep.get("episodeNumber") or ep.get("number")
             if ep_number is None:
                 continue
@@ -154,15 +124,18 @@ def main():
 
     for series_id in SERIES_IDS:
         log.info("Fetching series: %s", series_id)
-        data = fetch_series_data(session, device_id, jwt_token, series_id)
-        episodes = extract_episodes(data, series_id)
+        try:
+            data = fetch_series_episodes(session, jwt_token, series_id)
+        except Exception as e:
+            log.error("Failed to fetch series %s: %s", series_id, e)
+            continue
+
+        episodes = extract_episodes(data)
         if not episodes:
             log.warning("No episodes found for %s", series_id)
             continue
 
-        # O nome da série é obtido do item VOD correto
-        vod_list = data.get("VOD", [])
-        series_name = next((v.get("name", "Série Desconhecida") for v in vod_list if v.get("id") == series_id), "Série Desconhecida")
+        series_name = data.get("name", "Série Desconhecida")
         log.info("Processing: %s", series_name)
 
         json_output = json.dumps(episodes, ensure_ascii=False, indent=2)
