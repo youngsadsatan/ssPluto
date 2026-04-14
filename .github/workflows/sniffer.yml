@@ -1,0 +1,35 @@
+name: Pluto TV Sniffer
+
+on:
+  workflow_dispatch:
+    inputs:
+      series_id:
+        description: 'Pluto TV'
+        required: true
+        type: string
+
+jobs:
+  sniff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Run sniffer
+        env:
+          PLUTO_COOKIES: ${{ secrets.PLUTO_COOKIES }}
+        run: python PlutoTV_sniffer.py "${{ inputs.series_id }}" "output"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pluto-episodes
+          path: output/*.txt
