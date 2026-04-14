@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Pluto TV Sniffer - Versão Estável
+Obtém os dados completos da série através de uma segunda chamada ao boot com seriesIDs.
+"""
+
 import json
 import logging
 import re
 import sys
 import os
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -21,10 +25,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pluto_sniffer")
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
-VOD_ITEMS_URL = "https://service-vod.clusters.pluto.tv/v4/vod/items"
+
 CONFIG_SEARCH_PATHS = [
     Path("config.yml"),
     Path(".github/workflows/config.yml"),
@@ -45,7 +49,7 @@ def load_config(config_path: Optional[Path] = None) -> dict:
             "series_input": os.environ.get("SERIES_INPUT", "66d70dfaf98f52001332a8f5"),
             "output_dir": "./output",
             "cookies_file": "",
-            "geo": {"latitude": -23.5505, "longitude": -46.6333},
+            "geo": {"latitude": -29.7800, "longitude": -55.8000},
             "debug_mode": True
         }
     with open(config_path, "r", encoding="utf-8") as f:
@@ -78,11 +82,8 @@ def safe_filename(text: str) -> str:
     text = re.sub(r'[\\/*?:"<>|]', "", text)
     return text or "serie_sem_nome"
 
-def get_jwt_token(session: requests.Session, device_id: str, series_id: str, geo: dict) -> str:
-    now = datetime.now(timezone.utc)
-    client_time = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-    last_launch = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-
+def get_jwt_token(session: requests.Session, device_id: str, geo: dict) -> str:
+    """Primeira chamada ao boot para obter o token de sessão (sem seriesIDs)."""
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -90,33 +91,28 @@ def get_jwt_token(session: requests.Session, device_id: str, series_id: str, geo
         "deviceType": "web",
         "deviceMake": "firefox",
         "deviceModel": "web",
-        "deviceVersion": "148.0.0",
+        "deviceVersion": "149.0",
         "clientID": device_id,
         "deviceId": device_id,
         "sessionID": device_id,
         "marketingRegion": "BR",
         "country": "BR",
-        "deviceLat": str(geo.get("latitude", -23.5505)),
-        "deviceLon": str(geo.get("longitude", -46.6333)),
+        "deviceLat": str(geo.get("latitude", -29.7800)),
+        "deviceLon": str(geo.get("longitude", -55.8000)),
         "deviceDNT": "false",
         "serverSideAds": "false",
         "userId": "",
-        "geoOverride": "BR",
-        "seriesIDs": series_id,
-        "drmCapabilities": "widevine:L3",
-        "blockingMode": "",
-        "notificationVersion": "1",
-        "appLaunchCount": "0",
-        "lastAppLaunchDate": last_launch,
-        "clientTime": client_time,
+        "geoOverride": "BR"
     }
     headers = {
         "User-Agent": USER_AGENT,
-        "Referer": "https://pluto.tv/br/on-demand",
+        "Referer": "https://pluto.tv/",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
+        "CloudFront-Viewer-Country": "BR",
+        "X-Forwarded-For": "177.0.0.1"
     }
-    logger.info("Obtendo token JWT com seriesIDs...")
+    logger.info("Obtendo token JWT inicial...")
     resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
     data = resp.json()
@@ -126,27 +122,56 @@ def get_jwt_token(session: requests.Session, device_id: str, series_id: str, geo
     logger.info("Token obtido com sucesso.")
     return token
 
-def fetch_series_items(session: requests.Session, series_id: str, token: str) -> dict:
-    url = VOD_ITEMS_URL
+def fetch_series_data(session: requests.Session, device_id: str, series_id: str, geo: dict) -> dict:
+    """Segunda chamada ao boot, agora incluindo seriesIDs, para obter os dados completos da série."""
+    params = {
+        "appName": "web",
+        "appVersion": FIXED_APP_VERSION,
+        "clientModelNumber": "1.0.0",
+        "deviceType": "web",
+        "deviceMake": "firefox",
+        "deviceModel": "web",
+        "deviceVersion": "149.0",
+        "clientID": device_id,
+        "deviceId": device_id,
+        "sessionID": device_id,
+        "marketingRegion": "BR",
+        "country": "BR",
+        "deviceLat": str(geo.get("latitude", -29.7800)),
+        "deviceLon": str(geo.get("longitude", -55.8000)),
+        "deviceDNT": "false",
+        "serverSideAds": "false",
+        "userId": "",
+        "seriesIDs": series_id,
+        "geoOverride": "BR"
+    }
     headers = {
         "User-Agent": USER_AGENT,
-        "Accept": "application/json",
-        "Authorization": f"Bearer {token}",
         "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
         "Origin": "https://pluto.tv",
+        "Accept": "application/json",
+        "CloudFront-Viewer-Country": "BR",
+        "X-Forwarded-For": "177.0.0.1"
     }
-    params = {"ids": series_id}
-    logger.info(f"Consultando API de itens: {url}?ids={series_id}")
-    resp = session.get(url, headers=headers, params=params)
+    logger.info(f"Obtendo dados da série via boot com seriesIDs={series_id}...")
+    resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    vod_list = data.get("VOD", [])
+    for item in vod_list:
+        if item.get("id") == series_id:
+            logger.info("Dados da série encontrados no campo VOD.")
+            return item
+    raise ValueError("Série não encontrada na resposta VOD.")
 
 def extract_episodes(series_data: dict, series_id: str) -> List[dict]:
     series_title = series_data.get("name", "Desconhecido")
     episodes = []
     for season in series_data.get("seasons", []):
-        season_num = season.get("number", 0)
-        season_slug = season.get("slug", "")
+        season_num = season.get("seasonNumber")
+        if season_num is None:
+            season_num = 0
+        season_id = season.get("_id", "")
         for ep in season.get("episodes", []):
             ep_id = ep.get("_id")
             ep_num = ep.get("number")
@@ -156,7 +181,7 @@ def extract_episodes(series_data: dict, series_id: str) -> List[dict]:
                 "series_title": series_title,
                 "series_id": series_id,
                 "season_number": season_num,
-                "season_slug": season_slug,
+                "season_id": season_id,
                 "episode_number": ep_num,
                 "episode_title": ep.get("name", "Sem título"),
                 "episode_id": ep_id,
@@ -172,7 +197,7 @@ def write_output_file(series_title: str, episodes: List[dict], output_dir: Path)
     filename = safe_filename(series_title) + ".txt"
     filepath = output_dir / filename
     with open(filepath, "w", encoding="utf-8") as f:
-        f.write("Series_Title\tSeason_Number\tEpisode_Number\tEpisode_Title\tSeries_ID\tSeason_Slug\tEpisode_ID\n")
+        f.write("Series_Title\tSeason_Number\tEpisode_Number\tEpisode_Title\tSeries_ID\tSeason_ID\tEpisode_ID\n")
         for ep in episodes:
             f.write(
                 f"{ep['series_title']}\t"
@@ -180,7 +205,7 @@ def write_output_file(series_title: str, episodes: List[dict], output_dir: Path)
                 f"{ep['episode_number']}\t"
                 f"{ep['episode_title']}\t"
                 f"{ep['series_id']}\t"
-                f"{ep['season_slug']}\t"
+                f"{ep['season_id']}\t"
                 f"{ep['episode_id']}\n"
             )
     logger.info(f"Arquivo salvo: {filepath} ({len(episodes)} episódios)")
@@ -199,7 +224,7 @@ def main():
     series_id = extract_series_id(series_input)
     output_dir = Path(config.get("output_dir", "./output"))
     cookies_file = config.get("cookies_file")
-    geo = config.get("geo", {"latitude": -23.5505, "longitude": -46.6333})
+    geo = config.get("geo", {"latitude": -29.7800, "longitude": -55.8000})
     debug_mode = config.get("debug_mode", True)
 
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
@@ -224,16 +249,10 @@ def main():
 
     device_id = str(uuid.uuid4())
     try:
-        token = get_jwt_token(session, device_id, series_id, geo)
-        data = fetch_series_items(session, series_id, token)
-
-        # A API de itens retorna uma lista com um único elemento
-        if isinstance(data, list) and len(data) > 0:
-            series_data = data[0]
-        elif isinstance(data, dict):
-            series_data = data
-        else:
-            raise ValueError("Formato de resposta inesperado.")
+        # Passo 1: obter token (sem seriesIDs, mas os cookies já autenticam)
+        token = get_jwt_token(session, device_id, geo)
+        # Passo 2: obter dados da série (com seriesIDs)
+        series_data = fetch_series_data(session, device_id, series_id, geo)
 
         if debug_mode:
             with open("series_debug.json", "w", encoding="utf-8") as f:
