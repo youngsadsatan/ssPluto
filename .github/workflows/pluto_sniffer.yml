@@ -1,4 +1,4 @@
-name: Sniffer with Playwright
+name: Pluto TV Sniffer (API Direta)
 
 on:
   workflow_dispatch:
@@ -16,65 +16,36 @@ jobs:
   sniff:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      - name: Show file structure for debugging
-        run: |
-          echo "Diretório atual: $(pwd)"
-          ls -la
-          find . -name "config.yml" || echo "config.yml não encontrado"
-
-      - name: Set up Python
+      - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install Python dependencies
+      - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers with dependencies
-        run: |
-          playwright install --with-deps chromium
-          playwright install-deps chromium
-
-      - name: Create output directory
+      - name: Criar diretório de saída
         run: mkdir -p output
 
-      - name: Run sniffer
+      - name: Executar sniffer
         env:
           SERIES_INPUT: ${{ github.event.inputs.series_input || '66d70dfaf98f52001332a8f5' }}
         run: |
-          python pluto_sniffer_playwright.py "$SERIES_INPUT"
+          python pluto_sniffer.py "$SERIES_INPUT"
 
-      - name: Upload artifact
+      - name: Fazer upload do artefato
         uses: actions/upload-artifact@v4
         with:
           name: pluto-series-data
           path: output/*.txt
           retention-days: 7
 
-      - name: Upload debug files on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-files
-          path: |
-            error_screenshot.png
-            error_page.html
-            captured_responses.json
-
-      - name: Commit and push result
+      - name: (Opcional) Commit e push do resultado
         if: github.event_name != 'pull_request'
         run: |
           git config --local user.email "action@github.com"
