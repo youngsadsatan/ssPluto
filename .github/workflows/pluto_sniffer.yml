@@ -1,5 +1,5 @@
 # .github/workflows/pluto_sniffer.yml
-name: Pluto TV Sniffer
+name: Sniffer with Playwright
 
 on:
   workflow_dispatch:
