@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+SERIES_URL_OR_ID = "https://pluto.tv/br/on-demand/series/66d70dfaf98f52001332a8f5"
+
 import os
+import re
 import sys
 import json
 import uuid
-import re
 import requests
-from urllib.parse import urlencode
 
-# ============================================================
-# CONFIGURAÇÕES FIXAS
-# ============================================================
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
 
-# ============================================================
-# FUNÇÕES AUXILIARES
-# ============================================================
-def parse_netscape_cookies(content: str) -> dict:
-    """Converte cookies no formato Netscape (exportados do navegador) para dicionário."""
+def parse_netscape_cookies(content):
     cookies = {}
     for line in content.splitlines():
         line = line.strip()
@@ -35,8 +29,7 @@ def parse_netscape_cookies(content: str) -> dict:
             cookies[name] = value
     return cookies
 
-def get_jwt_token(session: requests.Session, device_id: str) -> str:
-    """Obtém o token JWT necessário para as requisições autenticadas."""
+def get_jwt_token(session, device_id):
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -58,7 +51,7 @@ def get_jwt_token(session: requests.Session, device_id: str) -> str:
     }
     resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
-        "Referer": "https://pluto.tv/br",
+        "Referer": "https://pluto.tv/",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
     }, params=params)
@@ -66,11 +59,10 @@ def get_jwt_token(session: requests.Session, device_id: str) -> str:
     data = resp.json()
     token = data.get("sessionToken")
     if not token:
-        raise ValueError("sessionToken não encontrado na resposta boot")
+        raise ValueError("sessionToken missing")
     return token
 
-def fetch_series_data(session: requests.Session, device_id: str, jwt_token: str, series_id: str) -> dict:
-    """Busca os metadados completos da série, incluindo temporadas e episódios."""
+def fetch_series_data(session, device_id, jwt_token, series_id):
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -99,28 +91,15 @@ def fetch_series_data(session: requests.Session, device_id: str, jwt_token: str,
     }, params=params)
     resp.raise_for_status()
     data = resp.json()
-    vod_list = data.get("VOD", [])
-    for item in vod_list:
+    for item in data.get("VOD", []):
         if item.get("id") == series_id:
             return item
-    raise ValueError(f"Série {series_id} não encontrada na resposta VOD")
+    raise ValueError("Series not found")
 
-def extract_episodes_info(series_data: dict) -> list:
-    """
-    Extrai as informações estruturadas de cada episódio:
-    Retorna lista de dicionários com:
-      - series_title
-      - series_id
-      - season_number (int)
-      - season_id
-      - episode_number (int)
-      - episode_title
-      - episode_id
-    """
-    episodes = []
+def extract_episodes_info(series_data):
     series_title = series_data.get("name", "Desconhecido")
     series_id = series_data.get("id", "")
-
+    episodes = []
     for season in series_data.get("seasons", []):
         season_num = season.get("seasonNumber")
         season_id = season.get("_id", "")
@@ -139,94 +118,56 @@ def extract_episodes_info(series_data: dict) -> list:
                 "episode_title": ep_title,
                 "episode_id": ep_id
             })
-
-    # Ordena por temporada e episódio
     episodes.sort(key=lambda x: (x["season_number"], x["episode_number"]))
     return episodes
 
-def sanitize_filename(name: str) -> str:
-    """Remove caracteres inválidos para nome de arquivo."""
+def sanitize_filename(name):
     return re.sub(r'[\\/*?:"<>|]', "", name).strip()
 
-def write_output_file(series_title: str, episodes: list, output_dir: str = "."):
-    """
-    Gera um arquivo .txt com as colunas:
-    título | temporada S0X | episódio E0X | series_id | season_id | episode_id
-    """
+def write_output_file(series_title, episodes):
     if not episodes:
-        print(f"⚠️ Nenhum episódio encontrado para '{series_title}'. Nenhum arquivo gerado.")
         return
-
     safe_title = sanitize_filename(series_title) or "serie_sem_nome"
-    filename = os.path.join(output_dir, f"{safe_title}.txt")
-
+    filename = f"{safe_title}.txt"
     with open(filename, "w", encoding="utf-8") as f:
-        # Cabeçalho opcional (pode remover se quiser)
         f.write("Título\tTemporada\tEpisódio\tSeries_ID\tSeason_ID\tEpisode_ID\n")
         for ep in episodes:
             season_str = f"S{ep['season_number']:02d}"
             episode_str = f"E{ep['episode_number']:02d}"
-            line = (
-                f"{ep['series_title']}\t"
-                f"{season_str}\t"
-                f"{episode_str}\t"
-                f"{ep['series_id']}\t"
-                f"{ep['season_id']}\t"
-                f"{ep['episode_id']}\n"
-            )
-            f.write(line)
+            f.write(f"{ep['series_title']}\t{season_str}\t{episode_str}\t{ep['series_id']}\t{ep['season_id']}\t{ep['episode_id']}\n")
+    print(f"Arquivo salvo: {filename} ({len(episodes)} episódios)")
 
-    print(f"💾 Arquivo salvo: {filename} ({len(episodes)} episódios)")
+def extract_id_from_input(user_input):
+    if not user_input:
+        raise ValueError("SERIES_URL_OR_ID está vazio")
+    match = re.search(r'/series/([a-f0-9]+)', user_input)
+    if match:
+        return match.group(1)
+    if re.fullmatch(r'[a-f0-9]+', user_input, re.I):
+        return user_input
+    raise ValueError("Formato inválido. Forneça URL ou ID hexadecimal")
 
-# ============================================================
-# FUNÇÃO PRINCIPAL
-# ============================================================
-def process_series(series_id: str, output_dir: str = "."):
-    """Executa todo o pipeline para uma única série."""
+def main():
+    series_id = extract_id_from_input(SERIES_URL_OR_ID.strip())
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content:
-        raise ValueError("Variável de ambiente PLUTO_COOKIES não definida")
-
+        raise ValueError("PLUTO_COOKIES não definido")
     cookies = parse_netscape_cookies(cookie_content)
     if not cookies:
-        raise ValueError("Nenhum cookie válido extraído")
-
+        raise ValueError("Cookies inválidos")
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
     for name, value in cookies.items():
         session.cookies.set(name, value, domain=".pluto.tv")
-
     device_id = str(uuid.uuid4())
-    print(f"🆔 Device ID: {device_id}")
-
-    print("🔐 Obtendo token JWT...")
     jwt_token = get_jwt_token(session, device_id)
-    print("✅ JWT obtido.")
-
-    print(f"📡 Buscando dados da série {series_id}...")
     series_data = fetch_series_data(session, device_id, jwt_token, series_id)
-    series_title = series_data.get("name", "Série Desconhecida")
-    print(f"📺 Série: {series_title}")
-
     episodes = extract_episodes_info(series_data)
-    print(f"🎬 Total de episódios encontrados: {len(episodes)}")
-
-    write_output_file(series_title, episodes, output_dir)
-
-def main():
-    if len(sys.argv) < 2:
-        print(f"Uso: {sys.argv[0]} <series_id> [diretório_saída]", file=sys.stderr)
-        print("Exemplo: python PlutoTV_sniffer.py 5f972b4e8f3b4e001e2b0a1b", file=sys.stderr)
-        sys.exit(1)
-
-    series_id = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else "."
-
-    try:
-        process_series(series_id, output_dir)
-    except Exception as e:
-        print(f"\n💥 Erro: {e}", file=sys.stderr)
-        sys.exit(1)
+    write_output_file(series_data.get("name", "Série Desconhecida"), episodes)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"Erro: {e}", file=sys.stderr)
+        sys.exit(1)
