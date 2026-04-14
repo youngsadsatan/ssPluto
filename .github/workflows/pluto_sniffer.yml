@@ -3,14 +3,7 @@ name: Sniffer with Playwright
 
 on:
   workflow_dispatch:
-    inputs:
-      series_input:
-        description: 'ID da série ou URL (ex: 66d70dfaf98f52001332a8f5)'
-        required: true
-        default: '66d70dfaf98f52001332a8f5'
-  schedule:
-    - cron: '0 0 * * 0'  # opcional: executa todo domingo à meia-noite UTC
-
+  
 permissions:
   contents: write
   actions: read
