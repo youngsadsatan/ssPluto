@@ -4,18 +4,20 @@
 import os
 import sys
 import json
+import re
 import uuid
-import time
-import requests
 import logging
+import requests
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
-log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger("pluto_sniffer")
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
+SLUG_RESOLVER = "https://service-vod.clusters.pluto.tv/v4/vod/slugs"
 
+# Lista de IDs externos (pode adicionar mais)
 SERIES_IDS = [
     "66d70dfaf98f52001332a8f5",
 ]
@@ -24,13 +26,12 @@ def parse_netscape_cookies(content):
     cookies = {}
     for line in content.splitlines():
         line = line.strip()
-        if not line or line.startswith('#'):
+        if not line or line.startswith("#"):
             continue
-        parts = line.split('\t')
+        parts = line.split("\t")
         if len(parts) != 7:
             continue
-        name = parts[5].strip()
-        value = parts[6].strip()
+        name, value = parts[5].strip(), parts[6].strip()
         if name:
             cookies[name] = value
     return cookies
@@ -54,23 +55,40 @@ def get_jwt_token(session, device_id):
         "deviceDNT": "false",
         "serverSideAds": "false",
         "userId": "",
-        "geoOverride": "BR",
+        "geoOverride": "BR"
     }
-    resp = session.get(BOOT_URL, headers={
+    headers = {
         "User-Agent": USER_AGENT,
         "Referer": "https://pluto.tv/",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
-    }, params=params)
+        "CloudFront-Viewer-Country": "BR",
+        "X-Forwarded-For": "177.0.0.1"
+    }
+    resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
     data = resp.json()
     token = data.get("sessionToken")
     if not token:
-        raise ValueError("sessionToken missing")
+        raise ValueError("sessionToken não encontrado")
     return token
 
-def fetch_series_vod(session, device_id, jwt_token, series_id):
-    """Obtém os dados VOD da série usando o endpoint boot."""
+def resolve_internal_id(session, external_id, jwt_token):
+    headers = {
+        "Authorization": f"Bearer {jwt_token}",
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "CloudFront-Viewer-Country": "BR",
+        "X-Forwarded-For": "177.0.0.1"
+    }
+    resp = session.get(SLUG_RESOLVER, headers=headers, params={"slugs": external_id})
+    resp.raise_for_status()
+    data = resp.json()
+    if external_id in data:
+        return data[external_id]["id"]
+    raise ValueError(f"Não foi possível resolver o ID externo: {external_id}")
+
+def fetch_series_data(session, device_id, internal_id):
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -89,43 +107,34 @@ def fetch_series_vod(session, device_id, jwt_token, series_id):
         "deviceDNT": "false",
         "serverSideAds": "false",
         "userId": "",
-        "seriesIDs": series_id,
-        "geoOverride": "BR",
+        "seriesIDs": internal_id,
+        "geoOverride": "BR"
     }
-    resp = session.get(BOOT_URL, headers={
+    headers = {
         "User-Agent": USER_AGENT,
-        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
+        "Referer": f"https://pluto.tv/br/on-demand/series/{internal_id}",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
-    }, params=params)
+        "CloudFront-Viewer-Country": "BR",
+        "X-Forwarded-For": "177.0.0.1"
+    }
+    resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
-    return resp.json()
-
-def extract_episodes(vod_data, series_id):
-    episodes = []
-    vod_list = vod_data.get("VOD", [])
-    target = None
+    data = resp.json()
+    vod_list = data.get("VOD", [])
     for item in vod_list:
-        if item.get("id") == series_id:
-            target = item
-            break
-    if not target:
-        # fallback: tenta encontrar pelo nome (pode ser arriscado)
-        for item in vod_list:
-            if "tratamento" in item.get("name", "").lower():
-                target = item
-                break
-    if not target:
-        log.warning("Série %s não localizada no VOD. Itens disponíveis: %s",
-                    series_id, [v.get("name") for v in vod_list])
-        return episodes
+        if item.get("id") == internal_id:
+            return item
+    raise ValueError(f"Série com ID interno {internal_id} não encontrada no VOD")
 
-    for season in target.get("seasons", []):
+def extract_episodes(series_data):
+    episodes = []
+    for season in series_data.get("seasons", []):
         season_num = season.get("seasonNumber")
         if season_num is None:
             continue
         for ep in season.get("episodes", []):
-            ep_id = ep.get("_id") or ep.get("id")
+            ep_id = ep.get("_id")
             if not ep_id:
                 continue
             ep_title = ep.get("name", "Sem título")
@@ -144,11 +153,10 @@ def extract_episodes(vod_data, series_id):
 def main():
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content:
-        raise ValueError("PLUTO_COOKIES environment variable not set")
-
+        raise ValueError("PLUTO_COOKIES não definido")
     cookies = parse_netscape_cookies(cookie_content)
     if not cookies:
-        raise ValueError("no valid cookies extracted")
+        raise ValueError("Nenhum cookie válido encontrado")
 
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
@@ -158,30 +166,42 @@ def main():
     device_id = str(uuid.uuid4())
     log.info("Device ID: %s", device_id)
 
+    # 1. Obter JWT
     jwt_token = get_jwt_token(session, device_id)
-    time.sleep(1)  # Pequena pausa para evitar 429
+    log.info("JWT obtido com sucesso")
 
-    for series_id in SERIES_IDS:
-        log.info("Fetching series: %s", series_id)
+    for external_id in SERIES_IDS:
+        log.info("Processando ID externo: %s", external_id)
+
+        # 2. Resolver ID interno
         try:
-            data = fetch_series_vod(session, device_id, jwt_token, series_id)
+            internal_id = resolve_internal_id(session, external_id, jwt_token)
         except Exception as e:
-            log.error("Falha ao obter VOD para %s: %s", series_id, e)
+            log.error("Falha ao resolver ID interno para %s: %s", external_id, e)
+            continue
+        log.info("ID interno resolvido: %s", internal_id)
+
+        # 3. Buscar dados da série
+        try:
+            series_data = fetch_series_data(session, device_id, internal_id)
+        except Exception as e:
+            log.error("Falha ao obter dados da série %s: %s", internal_id, e)
             continue
 
-        episodes = extract_episodes(data, series_id)
+        series_name = series_data.get("name", "Série Desconhecida")
+        log.info("Série: %s", series_name)
+
+        # 4. Extrair episódios
+        episodes = extract_episodes(series_data)
         if not episodes:
-            log.warning("Nenhum episódio encontrado para %s", series_id)
+            log.warning("Nenhum episódio encontrado para %s", series_name)
             continue
 
-        # O nome da série é pego do próprio objeto alvo
-        series_name = next((v.get("name", "Série Desconhecida") for v in data.get("VOD", []) if v.get("id") == series_id), "Série Desconhecida")
-        log.info("Processando: %s", series_name)
-
-        json_output = json.dumps(episodes, ensure_ascii=False, indent=2)
-        output_file = f"{series_name}.json"
+        # 5. Salvar JSON
+        safe_name = re.sub(r'[\\/*?:"<>|]', "", series_name).strip()
+        output_file = f"{safe_name}.json"
         with open(output_file, "w", encoding="utf-8") as f:
-            f.write(json_output)
+            json.dump(episodes, f, ensure_ascii=False, indent=2)
 
         log.info("Arquivo salvo: %s (%d episódios)", output_file, len(episodes))
 
