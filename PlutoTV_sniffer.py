@@ -12,7 +12,7 @@ import requests
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
-CHRONICLE_BASE = "https://service-chronicle.clusters.pluto.tv/v2"
+VOD_BASE = "https://service-vod.clusters.pluto.tv/v4/vod"
 
 def parse_netscape_cookies(content):
     cookies = {}
@@ -70,40 +70,32 @@ def fetch_series_details(session, series_id, jwt_token, device_id):
         "Origin": "https://pluto.tv",
         "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
     }
-    resp = session.get(f"{CHRONICLE_BASE}/series/{series_id}", headers=headers)
+    resp = session.get(f"{VOD_BASE}/items", params={"ids": series_id}, headers=headers)
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    if not data:
+        raise ValueError("Series not found")
+    return data[0]
 
 def fetch_seasons(session, series_id, jwt_token, device_id):
     headers = {
         "User-Agent": USER_AGENT,
         "Authorization": f"Bearer {jwt_token}",
         "Client-ID": device_id,
+        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
     }
-    resp = session.get(f"{CHRONICLE_BASE}/series/{series_id}/seasons", headers=headers)
+    resp = session.get(f"{VOD_BASE}/series/{series_id}/seasons", headers=headers)
     resp.raise_for_status()
-    return resp.json()
+    return resp.json().get("seasons", [])
 
-def fetch_episodes(session, season_id, jwt_token, device_id):
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Authorization": f"Bearer {jwt_token}",
-        "Client-ID": device_id,
-    }
-    resp = session.get(f"{CHRONICLE_BASE}/seasons/{season_id}/episodes", headers=headers)
-    resp.raise_for_status()
-    return resp.json()
-
-def extract_episodes_info(series_details, seasons_data, episodes_by_season):
+def extract_episodes_info(series_details, seasons_data):
     series_title = series_details.get("name", "Desconhecido")
-    series_id = series_details.get("id", "")
+    series_id = series_details.get("_id", "")
     episodes = []
     for season in seasons_data:
-        season_num = season.get("seasonNumber")
-        season_id = season.get("id", "")
-        ep_list = episodes_by_season.get(season_id, [])
-        for ep in ep_list:
-            ep_id = ep.get("id")
+        season_num = season.get("number")
+        for ep in season.get("episodes", []):
+            ep_id = ep.get("_id")
             ep_number = ep.get("number")
             if not ep_id or ep_number is None:
                 continue
@@ -112,7 +104,7 @@ def extract_episodes_info(series_details, seasons_data, episodes_by_season):
                 "series_title": series_title,
                 "series_id": series_id,
                 "season_number": season_num,
-                "season_id": season_id,
+                "season_id": season.get("_id", ""),
                 "episode_number": ep_number,
                 "episode_title": ep_title,
                 "episode_id": ep_id
@@ -166,14 +158,7 @@ def main():
 
     seasons_data = fetch_seasons(session, series_id, jwt_token, device_id)
 
-    episodes_by_season = {}
-    for season in seasons_data:
-        season_id = season.get("id")
-        if season_id:
-            ep_data = fetch_episodes(session, season_id, jwt_token, device_id)
-            episodes_by_season[season_id] = ep_data
-
-    episodes = extract_episodes_info(series_details, seasons_data, episodes_by_season)
+    episodes = extract_episodes_info(series_details, seasons_data)
     write_output_file(series_title, episodes)
 
 if __name__ == "__main__":
