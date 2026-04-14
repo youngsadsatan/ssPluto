@@ -3,14 +3,12 @@
 
 SERIES_URL_OR_ID = "66d70dfaf98f52001332a8f5"  #
 
-import os, re, sys, json, uuid, logging, requests
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stderr)]
-)
-logger = logging.getLogger("pluto_sniffer")
+import os
+import re
+import sys
+import json
+import uuid
+import requests
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
@@ -20,24 +18,16 @@ def parse_netscape_cookies(content):
     cookies = {}
     for line in content.splitlines():
         line = line.strip()
-        if not line or line.startswith("#"):
+        if not line or line.startswith('#'):
             continue
-        parts = line.split("\t")
+        parts = line.split('\t')
         if len(parts) != 7:
             continue
-        name, value = parts[5].strip(), parts[6].strip()
+        name = parts[5].strip()
+        value = parts[6].strip()
         if name:
             cookies[name] = value
     return cookies
-
-def decode_jwt(token):
-    import base64
-    try:
-        payload = token.split(".")[1]
-        payload += "=" * (4 - len(payload) % 4)
-        return json.loads(base64.urlsafe_b64decode(payload))
-    except:
-        return {}
 
 def get_jwt_token(session, device_id):
     params = {
@@ -74,7 +64,6 @@ def get_jwt_token(session, device_id):
     token = data.get("sessionToken")
     if not token:
         raise ValueError("sessionToken missing")
-    logger.debug(f"JWT: {json.dumps(decode_jwt(token), indent=2)}")
     return token
 
 def fetch_series_data(session, device_id, jwt_token, series_id):
@@ -110,20 +99,17 @@ def fetch_series_data(session, device_id, jwt_token, series_id):
     resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
     data = resp.json()
-    vod_list = data.get("VOD", [])
-    for item in vod_list:
+    for item in data.get("VOD", []):
         if item.get("id") == series_id:
             return item
-    raise ValueError("Série não encontrada na resposta VOD")
+    raise ValueError("Series not found")
 
 def extract_episodes_info(series_data):
     series_title = series_data.get("name", "Desconhecido")
     series_id = series_data.get("id", "")
     episodes = []
     for season in series_data.get("seasons", []):
-        season_num = season.get("seasonNumber")
-        if season_num is None:
-            season_num = 0  # fallback
+        season_num = season.get("seasonNumber") or 0
         season_id = season.get("_id", "")
         for ep in season.get("episodes", []):
             ep_id = ep.get("_id")
@@ -154,7 +140,7 @@ def write_output_file(series_title, episodes):
             season_str = f"S{ep['season_number']:02d}"
             episode_str = f"E{ep['episode_number']:02d}"
             f.write(f"{ep['series_title']}\t{season_str}\t{episode_str}\t{ep['series_id']}\t{ep['season_id']}\t{ep['episode_id']}\n")
-    logger.info(f"Arquivo salvo: {filename} ({len(episodes)} episódios)")
+    print(f"Arquivo salvo: {filename} ({len(episodes)} episódios)")
 
 def extract_id_from_input(user_input):
     if not user_input:
@@ -188,5 +174,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger.exception("Erro fatal")
+        print(f"Erro: {e}", file=sys.stderr)
         sys.exit(1)
