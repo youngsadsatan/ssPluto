@@ -3,12 +3,15 @@
 
 SERIES_URL_OR_ID = "66d70dfaf98f52001332a8f5"  #
 
-import os
-import re
-import sys
-import json
-import uuid
-import requests
+import os, re, sys, json, uuid, logging, requests
+
+# Configuração de logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stderr)]
+)
+logger = logging.getLogger("pluto_sniffer")
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
@@ -18,15 +21,15 @@ def parse_netscape_cookies(content):
     cookies = {}
     for line in content.splitlines():
         line = line.strip()
-        if not line or line.startswith('#'):
+        if not line or line.startswith("#"):
             continue
-        parts = line.split('\t')
+        parts = line.split("\t")
         if len(parts) != 7:
             continue
-        name = parts[5].strip()
-        value = parts[6].strip()
+        name, value = parts[5].strip(), parts[6].strip()
         if name:
             cookies[name] = value
+    logger.debug(f"Cookies carregados: {list(cookies.keys())}")
     return cookies
 
 def get_jwt_token(session, device_id):
@@ -50,21 +53,32 @@ def get_jwt_token(session, device_id):
         "userId": "",
         "geoOverride": "BR"
     }
-    headers = {
+    logger.debug(f"Obtendo JWT via {BOOT_URL}")
+    resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
         "Referer": "https://pluto.tv/",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
         "CloudFront-Viewer-Country": "BR",
         "X-Forwarded-For": "177.0.0.1"
-    }
-    resp = session.get(BOOT_URL, headers=headers, params=params)
+    }, params=params)
+    logger.debug(f"Status boot: {resp.status_code}")
     resp.raise_for_status()
     data = resp.json()
     token = data.get("sessionToken")
     if not token:
-        raise ValueError("sessionToken missing")
+        raise ValueError("sessionToken não encontrado")
+    logger.debug(f"JWT obtido. Claims: {json.dumps(decode_jwt(token), indent=2)}")
     return token
+
+def decode_jwt(token):
+    import base64
+    try:
+        payload = token.split(".")[1]
+        payload += "=" * (4 - len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload))
+    except:
+        return {}
 
 def fetch_series_data(session, device_id, jwt_token, series_id):
     params = {
@@ -88,28 +102,35 @@ def fetch_series_data(session, device_id, jwt_token, series_id):
         "seriesIDs": series_id,
         "geoOverride": "BR"
     }
-    headers = {
+    logger.debug(f"Buscando série via boot com seriesIDs={series_id}")
+    resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
         "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
         "CloudFront-Viewer-Country": "BR",
         "X-Forwarded-For": "177.0.0.1"
-    }
-    resp = session.get(BOOT_URL, headers=headers, params=params)
-    resp.raise_for_status()
+    }, params=params)
+    logger.debug(f"Status boot com seriesIDs: {resp.status_code}")
+    if resp.status_code != 200:
+        logger.error(f"Resposta boot: {resp.text[:500]}")
+        resp.raise_for_status()
     data = resp.json()
-    for item in data.get("VOD", []):
+    vod_list = data.get("VOD", [])
+    logger.debug(f"VOD items retornados: {len(vod_list)}")
+    for item in vod_list:
         if item.get("id") == series_id:
             return item
-    raise ValueError("Series not found")
+    if vod_list:
+        logger.warning(f"IDs disponíveis: {[i['id'] for i in vod_list]}")
+    raise ValueError("Série não encontrada na resposta VOD")
 
 def extract_episodes_info(series_data):
     series_title = series_data.get("name", "Desconhecido")
     series_id = series_data.get("id", "")
     episodes = []
     for season in series_data.get("seasons", []):
-        season_num = season.get("seasonNumber") or 0
+        season_num = season.get("seasonNumber")
         season_id = season.get("_id", "")
         for ep in season.get("episodes", []):
             ep_id = ep.get("_id")
@@ -140,7 +161,7 @@ def write_output_file(series_title, episodes):
             season_str = f"S{ep['season_number']:02d}"
             episode_str = f"E{ep['episode_number']:02d}"
             f.write(f"{ep['series_title']}\t{season_str}\t{episode_str}\t{ep['series_id']}\t{ep['season_id']}\t{ep['episode_id']}\n")
-    print(f"Arquivo salvo: {filename} ({len(episodes)} episódios)")
+    logger.info(f"Arquivo salvo: {filename} ({len(episodes)} episódios)")
 
 def extract_id_from_input(user_input):
     if not user_input:
@@ -150,7 +171,7 @@ def extract_id_from_input(user_input):
         return match.group(1)
     if re.fullmatch(r'[a-f0-9]+', user_input, re.I):
         return user_input
-    raise ValueError("Formato inválido")
+    raise ValueError("Formato inválido. Forneça URL ou ID hexadecimal")
 
 def main():
     series_id = extract_id_from_input(SERIES_URL_OR_ID.strip())
@@ -174,5 +195,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(f"Erro: {e}", file=sys.stderr)
+        logger.exception("Erro fatal")
         sys.exit(1)
