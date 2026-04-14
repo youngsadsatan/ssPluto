@@ -6,6 +6,7 @@ import sys
 import json
 import uuid
 import argparse
+import glob
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -16,6 +17,7 @@ FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
 STITCHER_BASE = "https://cfd-v4-service-stitcher-dash-use1-1.prd.pluto.tv/v2/stitch/hls/episode/{episode_id}/master.m3u8"
 OUTPUT_FILE = "playlist.m3u"
+DEFAULT_JSON_DIR = "output"
 
 def parse_netscape_cookies(content):
     cookies = {}
@@ -135,9 +137,17 @@ def generate_m3u_playlist(json_files):
 
 def main():
     parser = argparse.ArgumentParser(description="Gera playlist M3U a partir de arquivos JSON do Pluto TV.")
-    parser.add_argument("json_files", nargs="+", help="Caminhos para arquivos JSON com dados das séries.")
+    parser.add_argument("json_files", nargs="*", help="Caminhos para arquivos JSON com dados das séries. Se omitido, busca em ./output/*.json")
     args = parser.parse_args()
-    generate_m3u_playlist(args.json_files)
+    
+    json_files = args.json_files
+    if not json_files:
+        json_files = glob.glob(os.path.join(DEFAULT_JSON_DIR, "*.json"))
+        if not json_files:
+            print("Nenhum arquivo JSON encontrado no diretório padrão './output/'.", file=sys.stderr)
+            sys.exit(1)
+    
+    generate_m3u_playlist(json_files)
 
 if __name__ == "__main__":
     try:
