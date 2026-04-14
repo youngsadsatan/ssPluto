@@ -1,0 +1,12 @@
+series_input: "66d70dfaf98f52001332a8f5"
+output_dir: "./output"
+cookies_file: ""
+geo:
+  latitude: -23.5505
+  longitude: -46.6333
+  accuracy: 100
+locale: "pt-BR"
+timezone: "America/Sao_Paulo"
+headless: true
+timeout: 45000
+debug_mode: true
