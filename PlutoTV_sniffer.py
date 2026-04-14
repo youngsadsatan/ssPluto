@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Pluto TV Sniffer - Versão Estável com Saída JSON
+Obtém os dados completos da série e gera um arquivo JSON estruturado.
+"""
+
 import json
 import logging
 import re
@@ -156,6 +161,7 @@ def fetch_series_data(session: requests.Session, device_id: str, series_id: str,
     raise ValueError("Série não encontrada na resposta VOD.")
 
 def extract_episodes(series_data: dict, series_id: str) -> List[dict]:
+    """Extrai episódios no formato final para o JSON."""
     series_title = series_data.get("name", "Desconhecido")
     episodes = []
     seasons = series_data.get("seasons", [])
@@ -183,38 +189,41 @@ def extract_episodes(series_data: dict, series_id: str) -> List[dict]:
                 ep_num = int(ep_num)
             except:
                 pass
+            
+            # Formata o slug S01E01
+            slug = f"S{season_num:02d}E{ep_num:02d}"
+            
             episodes.append({
-                "series_title": series_title,
-                "series_id": series_id,
-                "season_number": season_num,
-                "season_id": season_id,
-                "episode_number": ep_num,
-                "episode_title": ep.get("name", "Sem título"),
+                "season": season_num,
+                "episode": ep_num,
+                "slug": slug,
+                "title": ep.get("name", "Sem título"),
                 "episode_id": ep_id,
             })
-    episodes.sort(key=lambda x: (x["season_number"], x["episode_number"]))
+    
+    episodes.sort(key=lambda x: (x["season"], x["episode"]))
     return episodes
 
-def write_output_file(series_title: str, episodes: List[dict], output_dir: Path):
+def write_output_json(series_title: str, series_id: str, episodes: List[dict], output_dir: Path):
+    """Salva os dados da série em um arquivo JSON."""
     if not episodes:
         logger.warning("Nenhum episódio encontrado.")
         return
+    
     output_dir.mkdir(parents=True, exist_ok=True)
-    filename = safe_filename(series_title) + ".txt"
+    filename = safe_filename(series_title) + ".json"
     filepath = output_dir / filename
+    
+    output_data = {
+        "series_title": series_title,
+        "series_id": series_id,
+        "episodes": episodes
+    }
+    
     with open(filepath, "w", encoding="utf-8") as f:
-        f.write("Series_Title\tSeason_Number\tEpisode_Number\tEpisode_Title\tSeries_ID\tSeason_ID\tEpisode_ID\n")
-        for ep in episodes:
-            f.write(
-                f"{ep['series_title']}\t"
-                f"{ep['season_number']}\t"
-                f"{ep['episode_number']}\t"
-                f"{ep['episode_title']}\t"
-                f"{ep['series_id']}\t"
-                f"{ep['season_id']}\t"
-                f"{ep['episode_id']}\n"
-            )
-    logger.info(f"Arquivo salvo: {filepath} ({len(episodes)} episódios)")
+        json.dump(output_data, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"Arquivo JSON salvo: {filepath} ({len(episodes)} episódios)")
 
 def main():
     config = load_config()
@@ -264,7 +273,8 @@ def main():
             logger.info("Debug salvo em series_debug.json")
 
         episodes = extract_episodes(series_data, series_id)
-        write_output_file(series_data.get("name", "Série Desconhecida"), episodes, output_dir)
+        series_title = series_data.get("name", "Série Desconhecida")
+        write_output_json(series_title, series_id, episodes, output_dir)
 
     except Exception as e:
         logger.exception("Erro fatal.")
