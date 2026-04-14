@@ -7,6 +7,7 @@ import re
 import sys
 import os
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -20,11 +21,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pluto_sniffer")
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
-VOD_API_V3_SLUG = "https://service-vod.clusters.pluto.tv/v3/vod/slugs/{slug}"
-VOD_API_V4_SEASONS = "https://service-vod.clusters.pluto.tv/v4/vod/series/{series_id}/seasons"
+VOD_SEASONS_URL = "https://service-vod.clusters.pluto.tv/v4/vod/series/{series_id}/seasons"
 CONFIG_SEARCH_PATHS = [
     Path("config.yml"),
     Path(".github/workflows/config.yml"),
@@ -78,7 +78,11 @@ def safe_filename(text: str) -> str:
     text = re.sub(r'[\\/*?:"<>|]', "", text)
     return text or "serie_sem_nome"
 
-def get_jwt_token(session: requests.Session, device_id: str, geo: dict) -> str:
+def get_jwt_token(session: requests.Session, device_id: str, series_id: str, geo: dict) -> str:
+    now = datetime.now(timezone.utc)
+    client_time = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    last_launch = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
     params = {
         "appName": "web",
         "appVersion": FIXED_APP_VERSION,
@@ -86,7 +90,7 @@ def get_jwt_token(session: requests.Session, device_id: str, geo: dict) -> str:
         "deviceType": "web",
         "deviceMake": "firefox",
         "deviceModel": "web",
-        "deviceVersion": "149.0",
+        "deviceVersion": "148.0.0",
         "clientID": device_id,
         "deviceId": device_id,
         "sessionID": device_id,
@@ -97,26 +101,33 @@ def get_jwt_token(session: requests.Session, device_id: str, geo: dict) -> str:
         "deviceDNT": "false",
         "serverSideAds": "false",
         "userId": "",
-        "geoOverride": "BR"
+        "geoOverride": "BR",
+        "seriesIDs": series_id,
+        "drmCapabilities": "widevine:L3",
+        "blockingMode": "",
+        "notificationVersion": "1",
+        "appLaunchCount": "0",
+        "lastAppLaunchDate": last_launch,
+        "clientTime": client_time,
     }
     headers = {
         "User-Agent": USER_AGENT,
-        "Referer": "https://pluto.tv/",
+        "Referer": "https://pluto.tv/br/on-demand",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
     }
-    logger.info("Obtendo token JWT...")
+    logger.info("Obtendo token JWT com seriesIDs...")
     resp = session.get(BOOT_URL, headers=headers, params=params)
     resp.raise_for_status()
-    token = resp.json().get("sessionToken")
+    data = resp.json()
+    token = data.get("sessionToken")
     if not token:
         raise ValueError("sessionToken não encontrado.")
-    logger.info("Token obtido.")
+    logger.info("Token obtido com sucesso.")
     return token
 
-def fetch_seasons_v4(session: requests.Session, series_id: str, token: str) -> dict:
-    """Endpoint funcional: /v4/vod/series/{id}/seasons"""
-    url = VOD_API_V4_SEASONS.format(series_id=series_id)
+def fetch_seasons(session: requests.Session, series_id: str, token: str) -> dict:
+    url = VOD_SEASONS_URL.format(series_id=series_id)
     headers = {
         "User-Agent": USER_AGENT,
         "Accept": "application/json",
@@ -125,65 +136,10 @@ def fetch_seasons_v4(session: requests.Session, series_id: str, token: str) -> d
         "Origin": "https://pluto.tv",
     }
     params = {"offset": 1000, "page": 1}
-    logger.info(f"Consultando API v4: {url}")
+    logger.info(f"Consultando API de temporadas: {url}")
     resp = session.get(url, headers=headers, params=params)
     resp.raise_for_status()
     return resp.json()
-
-def fetch_series_v3(session: requests.Session, slug: str, token: str) -> dict:
-    """API v3 por slug textual (ex: 'anger-management')"""
-    url = VOD_API_V3_SLUG.format(slug=slug)
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept": "application/json",
-        "Authorization": f"Bearer {token}",
-        "Referer": f"https://pluto.tv/br/on-demand/series/{slug}",
-        "Origin": "https://pluto.tv",
-    }
-    params = {
-        "appName": "web",
-        "appVersion": FIXED_APP_VERSION,
-        "deviceType": "web",
-        "deviceMake": "firefox",
-        "deviceModel": "web",
-        "deviceVersion": "149.0",
-        "clientID": str(uuid.uuid4()),
-        "deviceId": str(uuid.uuid4()),
-        "sessionID": str(uuid.uuid4()),
-        "marketingRegion": "BR",
-        "country": "BR",
-        "geoOverride": "BR",
-    }
-    logger.info(f"Consultando API v3: {url}")
-    resp = session.get(url, headers=headers, params=params)
-    resp.raise_for_status()
-    return resp.json()
-
-def extract_slug_from_page(session: requests.Session, series_id: str) -> Optional[str]:
-    """Extrai o slug textual da página da série."""
-    url = f"https://pluto.tv/br/on-demand/series/{series_id}"
-    headers = {"User-Agent": USER_AGENT, "Accept-Language": "pt-BR,pt;q=0.9"}
-    try:
-        resp = session.get(url, headers=headers, timeout=30)
-        resp.raise_for_status()
-        html = resp.text
-        # Procura por padrões como: "slug":"anger-management"
-        match = re.search(r'"slug"\s*:\s*"([a-z0-9-]+)"', html)
-        if match:
-            slug = match.group(1)
-            logger.info(f"Slug extraído: {slug}")
-            return slug
-        # Fallback: tenta extrair de __INITIAL_STATE__
-        match = re.search(r'window\.__INITIAL_STATE__\s*=\s*({.*?});', html, re.DOTALL)
-        if match:
-            data = json.loads(match.group(1))
-            slug = data.get("vod", {}).get("series", {}).get("slug")
-            if slug:
-                logger.info(f"Slug via __INITIAL_STATE__: {slug}")
-                return slug
-    except Exception as e:
-        logger.warning(f"Falha ao extrair slug: {e}")
-    return None
 
 def extract_episodes(series_data: dict, series_id: str) -> List[dict]:
     series_title = series_data.get("name", "Desconhecido")
@@ -246,7 +202,6 @@ def main():
     geo = config.get("geo", {"latitude": -23.5505, "longitude": -46.6333})
     debug_mode = config.get("debug_mode", True)
 
-    # Carrega cookies
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content and cookies_file:
         cookie_path = Path(cookies_file)
@@ -269,29 +224,8 @@ def main():
 
     device_id = str(uuid.uuid4())
     try:
-        token = get_jwt_token(session, device_id, geo)
-
-        # Tenta primeiro a API v4 com /seasons (endpoint confirmado funcional)
-        series_data = None
-        try:
-            series_data = fetch_seasons_v4(session, series_id, token)
-            logger.info("Dados obtidos via API v4 /seasons.")
-        except Exception as e:
-            logger.warning(f"API v4 falhou: {e}")
-
-        # Se falhar, tenta extrair slug e usar API v3
-        if not series_data:
-            slug = extract_slug_from_page(session, series_id)
-            if slug:
-                try:
-                    series_data = fetch_series_v3(session, slug, token)
-                    logger.info("Dados obtidos via API v3.")
-                except Exception as e:
-                    logger.warning(f"API v3 falhou: {e}")
-
-        if not series_data:
-            logger.error("Nenhuma API retornou dados da série.")
-            sys.exit(1)
+        token = get_jwt_token(session, device_id, series_id, geo)
+        series_data = fetch_seasons(session, series_id, token)
 
         if debug_mode:
             with open("seasons_debug.json", "w", encoding="utf-8") as f:
