@@ -1,30 +1,12 @@
 # config.yml
-# ---------------------------------------------------------------------
-# Pluto TV Sniffer - Configuração
-# ---------------------------------------------------------------------
-
-# ID da série ou URL completa (ex: "66d70dfaf98f52001332a8f5" ou 
-# "https://pluto.tv/br/on-demand/series/66d70dfaf98f52001332a8f5")
 series_input: "66d70dfaf98f52001332a8f5"
-
-# Diretório onde o arquivo .txt será salvo (padrão: diretório atual)
 output_dir: "./output"
-
-# Arquivo de cookies no formato Netscape (opcional)
-# Se não informado, o Playwright iniciará uma sessão limpa.
 cookies_file: ""
-
-# Configurações de geolocalização para forçar Brasil
 geo:
-  latitude: -23.5505   # São Paulo
+  latitude: -23.5505
   longitude: -46.6333
   accuracy: 100
-
 locale: "pt-BR"
 timezone: "America/Sao_Paulo"
-
-# Headless mode (true = sem interface gráfica, false = com navegador visível)
 headless: true
-
-# Timeout máximo para carregamento da página (em milissegundos)
 timeout: 30000
