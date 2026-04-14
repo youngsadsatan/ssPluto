@@ -1,4 +1,4 @@
-name: Pluto TV Sniffer
+name: PlutoTV Sniffer
 
 on:
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
           SERIES_INPUT: ${{ github.event.inputs.series_input || '66d70dfaf98f52001332a8f5' }}
           PLUTO_COOKIES: ${{ secrets.PLUTO_COOKIES }}
         run: |
-          python pluto_sniffer.py "$SERIES_INPUT"
+          python PlutoTV_sniffer.py "$SERIES_INPUT"
 
       - name: Fazer upload do artefato
         uses: actions/upload-artifact@v4
