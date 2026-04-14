@@ -8,5 +8,5 @@ geo:
 locale: "pt-BR"
 timezone: "America/Sao_Paulo"
 headless: true
-timeout: 45000
+timeout: 60000
 debug_mode: true
