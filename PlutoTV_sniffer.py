@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-SERIES_URL_OR_ID = "66d70dfaf98f52001332a8f5"
+SERIES_URL_OR_ID = "66d70dfaf98f52001332a8f5"  #
 
 import os
 import re
 import sys
-import json
 import uuid
 import requests
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
+CHRONICLE_BASE = "https://service-chronicle.clusters.pluto.tv/v2"
 
 def parse_netscape_cookies(content):
     cookies = {}
@@ -62,49 +62,48 @@ def get_jwt_token(session, device_id):
         raise ValueError("sessionToken missing")
     return token
 
-def fetch_series_data(session, device_id, jwt_token, series_id):
-    params = {
-        "appName": "web",
-        "appVersion": FIXED_APP_VERSION,
-        "clientModelNumber": "1.0.0",
-        "deviceType": "web",
-        "deviceMake": "firefox",
-        "deviceModel": "web",
-        "deviceVersion": "149.0",
-        "clientID": device_id,
-        "deviceId": device_id,
-        "sessionID": device_id,
-        "marketingRegion": "BR",
-        "country": "BR",
-        "deviceLat": "-29.7800",
-        "deviceLon": "-55.8000",
-        "deviceDNT": "false",
-        "serverSideAds": "false",
-        "userId": "",
-        "seriesIDs": series_id,
-    }
-    resp = session.get(BOOT_URL, headers={
+def fetch_series_details(session, series_id, jwt_token, device_id):
+    headers = {
         "User-Agent": USER_AGENT,
-        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
+        "Authorization": f"Bearer {jwt_token}",
+        "Client-ID": device_id,
         "Origin": "https://pluto.tv",
-        "Accept": "application/json",
-    }, params=params)
+        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
+    }
+    resp = session.get(f"{CHRONICLE_BASE}/series/{series_id}", headers=headers)
     resp.raise_for_status()
-    data = resp.json()
-    for item in data.get("VOD", []):
-        if item.get("id") == series_id:
-            return item
-    raise ValueError("Series not found")
+    return resp.json()
 
-def extract_episodes_info(series_data):
-    series_title = series_data.get("name", "Desconhecido")
-    series_id = series_data.get("id", "")
+def fetch_seasons(session, series_id, jwt_token, device_id):
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Authorization": f"Bearer {jwt_token}",
+        "Client-ID": device_id,
+    }
+    resp = session.get(f"{CHRONICLE_BASE}/series/{series_id}/seasons", headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+def fetch_episodes(session, season_id, jwt_token, device_id):
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Authorization": f"Bearer {jwt_token}",
+        "Client-ID": device_id,
+    }
+    resp = session.get(f"{CHRONICLE_BASE}/seasons/{season_id}/episodes", headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+def extract_episodes_info(series_details, seasons_data, episodes_by_season):
+    series_title = series_details.get("name", "Desconhecido")
+    series_id = series_details.get("id", "")
     episodes = []
-    for season in series_data.get("seasons", []):
+    for season in seasons_data:
         season_num = season.get("seasonNumber")
-        season_id = season.get("_id", "")
-        for ep in season.get("episodes", []):
-            ep_id = ep.get("_id")
+        season_id = season.get("id", "")
+        ep_list = episodes_by_season.get(season_id, [])
+        for ep in ep_list:
+            ep_id = ep.get("id")
             ep_number = ep.get("number")
             if not ep_id or ep_number is None:
                 continue
@@ -161,9 +160,21 @@ def main():
         session.cookies.set(name, value, domain=".pluto.tv")
     device_id = str(uuid.uuid4())
     jwt_token = get_jwt_token(session, device_id)
-    series_data = fetch_series_data(session, device_id, jwt_token, series_id)
-    episodes = extract_episodes_info(series_data)
-    write_output_file(series_data.get("name", "Série Desconhecida"), episodes)
+
+    series_details = fetch_series_details(session, series_id, jwt_token, device_id)
+    series_title = series_details.get("name", "Série Desconhecida")
+
+    seasons_data = fetch_seasons(session, series_id, jwt_token, device_id)
+
+    episodes_by_season = {}
+    for season in seasons_data:
+        season_id = season.get("id")
+        if season_id:
+            ep_data = fetch_episodes(session, season_id, jwt_token, device_id)
+            episodes_by_season[season_id] = ep_data
+
+    episodes = extract_episodes_info(series_details, seasons_data, episodes_by_season)
+    write_output_file(series_title, episodes)
 
 if __name__ == "__main__":
     try:
