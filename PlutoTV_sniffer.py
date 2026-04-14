@@ -6,26 +6,12 @@ SERIES_URL_OR_ID = "66d70dfaf98f52001332a8f5"  #
 import os
 import re
 import sys
-import json
 import uuid
-import logging
 import requests
-
-# Configuração de logging detalhado
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stderr)]
-)
-logger = logging.getLogger(__name__)
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
 FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
 BOOT_URL = "https://boot.pluto.tv/v4/start"
-VOD_BASE = "https://service-vod.clusters.pluto.tv/v4/vod"
-
-# ⚠️ CORREÇÃO: Use um device_id fixo para evitar rate limiting
-FIXED_DEVICE_ID = str(uuid.UUID('12345678-1234-5678-1234-567812345678'))
 
 def parse_netscape_cookies(content):
     cookies = {}
@@ -40,7 +26,6 @@ def parse_netscape_cookies(content):
         value = parts[6].strip()
         if name:
             cookies[name] = value
-    logger.debug(f"Cookies carregados: {list(cookies.keys())}")
     return cookies
 
 def get_jwt_token(session, device_id):
@@ -63,68 +48,61 @@ def get_jwt_token(session, device_id):
         "serverSideAds": "false",
         "userId": "",
     }
-    logger.debug(f"Obtendo JWT com device_id: {device_id}")
     resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
         "Referer": "https://pluto.tv/",
         "Origin": "https://pluto.tv",
         "Accept": "application/json",
     }, params=params)
-    logger.debug(f"Status boot: {resp.status_code}")
     resp.raise_for_status()
     data = resp.json()
     token = data.get("sessionToken")
     if not token:
-        logger.error(f"Resposta boot sem sessionToken: {data}")
         raise ValueError("sessionToken missing")
-    logger.debug("JWT obtido com sucesso")
     return token
 
-def fetch_series_details(session, series_id, jwt_token, device_id):
-    headers = {
+def fetch_series_data(session, device_id, jwt_token, series_id):
+    params = {
+        "appName": "web",
+        "appVersion": FIXED_APP_VERSION,
+        "clientModelNumber": "1.0.0",
+        "deviceType": "web",
+        "deviceMake": "firefox",
+        "deviceModel": "web",
+        "deviceVersion": "149.0",
+        "clientID": device_id,
+        "deviceId": device_id,
+        "sessionID": device_id,
+        "marketingRegion": "BR",
+        "country": "BR",
+        "deviceLat": "-29.7800",
+        "deviceLon": "-55.8000",
+        "deviceDNT": "false",
+        "serverSideAds": "false",
+        "userId": "",
+        "seriesIDs": series_id,
+    }
+    resp = session.get(BOOT_URL, headers={
         "User-Agent": USER_AGENT,
-        "Authorization": f"Bearer {jwt_token}",
-        "Client-ID": device_id,
+        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
         "Origin": "https://pluto.tv",
-        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
-    }
-    logger.debug(f"Buscando detalhes da série: {series_id}")
-    resp = session.get(f"{VOD_BASE}/items", params={"ids": series_id}, headers=headers)
-    logger.debug(f"Status VOD items: {resp.status_code}")
-    logger.debug(f"Resposta VOD items: {resp.text[:500]}...")
-    if resp.status_code != 200:
-        resp.raise_for_status()
+        "Accept": "application/json",
+    }, params=params)
+    resp.raise_for_status()
     data = resp.json()
-    logger.debug(f"VOD items data length: {len(data)}")
-    if not data:
-        logger.error("Resposta VOD items está vazia")
-        raise ValueError("Series not found - empty response")
-    return data[0]
+    vod_list = data.get("VOD", [])
+    for item in vod_list:
+        if item.get("id") == series_id:
+            return item
+    raise ValueError("Series not found in VOD response")
 
-def fetch_seasons(session, series_id, jwt_token, device_id):
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Authorization": f"Bearer {jwt_token}",
-        "Client-ID": device_id,
-        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
-    }
-    logger.debug(f"Buscando temporadas para série: {series_id}")
-    resp = session.get(f"{VOD_BASE}/series/{series_id}/seasons", headers=headers)
-    logger.debug(f"Status seasons: {resp.status_code}")
-    if resp.status_code != 200:
-        resp.raise_for_status()
-    data = resp.json()
-    seasons = data.get("seasons", [])
-    logger.debug(f"Temporadas encontradas: {len(seasons)}")
-    return seasons
-
-def extract_episodes_info(series_details, seasons_data):
-    series_title = series_details.get("name", "Desconhecido")
-    series_id = series_details.get("_id", "")
-    logger.debug(f"Nome da série: {series_title}")
+def extract_episodes_info(series_data):
+    series_title = series_data.get("name", "Desconhecido")
+    series_id = series_data.get("id", "")
     episodes = []
-    for season in seasons_data:
-        season_num = season.get("number")
+    for season in series_data.get("seasons", []):
+        season_num = season.get("seasonNumber")
+        season_id = season.get("_id", "")
         for ep in season.get("episodes", []):
             ep_id = ep.get("_id")
             ep_number = ep.get("number")
@@ -135,13 +113,12 @@ def extract_episodes_info(series_details, seasons_data):
                 "series_title": series_title,
                 "series_id": series_id,
                 "season_number": season_num,
-                "season_id": season.get("_id", ""),
+                "season_id": season_id,
                 "episode_number": ep_number,
                 "episode_title": ep_title,
                 "episode_id": ep_id
             })
     episodes.sort(key=lambda x: (x["season_number"], x["episode_number"]))
-    logger.debug(f"Total de episódios extraídos: {len(episodes)}")
     return episodes
 
 def sanitize_filename(name):
@@ -149,7 +126,6 @@ def sanitize_filename(name):
 
 def write_output_file(series_title, episodes):
     if not episodes:
-        logger.warning("Nenhum episódio para salvar")
         return
     safe_title = sanitize_filename(series_title) or "serie_sem_nome"
     filename = f"{safe_title}.txt"
@@ -159,7 +135,7 @@ def write_output_file(series_title, episodes):
             season_str = f"S{ep['season_number']:02d}"
             episode_str = f"E{ep['episode_number']:02d}"
             f.write(f"{ep['series_title']}\t{season_str}\t{episode_str}\t{ep['series_id']}\t{ep['season_id']}\t{ep['episode_id']}\n")
-    logger.info(f"Arquivo salvo: {filename} ({len(episodes)} episódios)")
+    print(f"Arquivo salvo: {filename} ({len(episodes)} episódios)")
 
 def extract_id_from_input(user_input):
     if not user_input:
@@ -173,33 +149,25 @@ def extract_id_from_input(user_input):
 
 def main():
     series_id = extract_id_from_input(SERIES_URL_OR_ID.strip())
-    logger.info(f"Processando série ID: {series_id}")
-    
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content:
         raise ValueError("PLUTO_COOKIES não definido")
     cookies = parse_netscape_cookies(cookie_content)
     if not cookies:
         raise ValueError("Cookies inválidos")
-        
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
     for name, value in cookies.items():
         session.cookies.set(name, value, domain=".pluto.tv")
-    
-    device_id = FIXED_DEVICE_ID
+    device_id = str(uuid.uuid4())
     jwt_token = get_jwt_token(session, device_id)
-
-    series_details = fetch_series_details(session, series_id, jwt_token, device_id)
-    series_title = series_details.get("name", "Série Desconhecida")
-
-    seasons_data = fetch_seasons(session, series_id, jwt_token, device_id)
-    episodes = extract_episodes_info(series_details, seasons_data)
-    write_output_file(series_title, episodes)
+    series_data = fetch_series_data(session, device_id, jwt_token, series_id)
+    episodes = extract_episodes_info(series_data)
+    write_output_file(series_data.get("name", "Série Desconhecida"), episodes)
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger.exception("Erro fatal")
+        print(f"Erro: {e}", file=sys.stderr)
         sys.exit(1)
