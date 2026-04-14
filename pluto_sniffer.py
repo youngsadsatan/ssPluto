@@ -6,6 +6,8 @@ import logging
 import re
 import sys
 import os
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -20,7 +22,9 @@ logging.basicConfig(
 logger = logging.getLogger("pluto_sniffer")
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0"
-SERIES_PAGE_URL = "https://pluto.tv/br/on-demand/series/{series_id}/details"
+FIXED_APP_VERSION = "9.20.0-89258290264838515e264f5b051b7c1602a58482"
+BOOT_URL = "https://boot.pluto.tv/v4/start"
+VOD_ITEMS_URL = "https://service-vod.clusters.pluto.tv/v4/vod/items"
 CONFIG_SEARCH_PATHS = [
     Path("config.yml"),
     Path(".github/workflows/config.yml"),
@@ -41,6 +45,7 @@ def load_config(config_path: Optional[Path] = None) -> dict:
             "series_input": os.environ.get("SERIES_INPUT", "66d70dfaf98f52001332a8f5"),
             "output_dir": "./output",
             "cookies_file": "",
+            "geo": {"latitude": -23.5505, "longitude": -46.6333},
             "debug_mode": True
         }
     with open(config_path, "r", encoding="utf-8") as f:
@@ -73,42 +78,68 @@ def safe_filename(text: str) -> str:
     text = re.sub(r'[\\/*?:"<>|]', "", text)
     return text or "serie_sem_nome"
 
-def extract_series_data_from_html(html: str) -> Optional[dict]:
-    # Tenta extrair de window.__INITIAL_STATE__
-    match = re.search(r'window\.__INITIAL_STATE__\s*=\s*({.*?});', html, re.DOTALL)
-    if match:
-        try:
-            data = json.loads(match.group(1))
-            # Navega até os dados da série
-            series = data.get("vod", {}).get("series", {})
-            if series and series.get("seasons"):
-                return series
-        except:
-            pass
+def get_jwt_token(session: requests.Session, device_id: str, series_id: str, geo: dict) -> str:
+    now = datetime.now(timezone.utc)
+    client_time = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    last_launch = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
-    # Tenta encontrar em tags <script type="application/json">
-    script_matches = re.findall(r'<script[^>]+type="application/json"[^>]*>(.*?)</script>', html, re.DOTALL)
-    for script_content in script_matches:
-        try:
-            data = json.loads(script_content)
-            if isinstance(data, dict):
-                series = data.get("vod", {}).get("series", {})
-                if series and series.get("seasons"):
-                    return series
-        except:
-            pass
+    params = {
+        "appName": "web",
+        "appVersion": FIXED_APP_VERSION,
+        "clientModelNumber": "1.0.0",
+        "deviceType": "web",
+        "deviceMake": "firefox",
+        "deviceModel": "web",
+        "deviceVersion": "148.0.0",
+        "clientID": device_id,
+        "deviceId": device_id,
+        "sessionID": device_id,
+        "marketingRegion": "BR",
+        "country": "BR",
+        "deviceLat": str(geo.get("latitude", -23.5505)),
+        "deviceLon": str(geo.get("longitude", -46.6333)),
+        "deviceDNT": "false",
+        "serverSideAds": "false",
+        "userId": "",
+        "geoOverride": "BR",
+        "seriesIDs": series_id,
+        "drmCapabilities": "widevine:L3",
+        "blockingMode": "",
+        "notificationVersion": "1",
+        "appLaunchCount": "0",
+        "lastAppLaunchDate": last_launch,
+        "clientTime": client_time,
+    }
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Referer": "https://pluto.tv/br/on-demand",
+        "Origin": "https://pluto.tv",
+        "Accept": "application/json",
+    }
+    logger.info("Obtendo token JWT com seriesIDs...")
+    resp = session.get(BOOT_URL, headers=headers, params=params)
+    resp.raise_for_status()
+    data = resp.json()
+    token = data.get("sessionToken")
+    if not token:
+        raise ValueError("sessionToken não encontrado.")
+    logger.info("Token obtido com sucesso.")
+    return token
 
-    # Tenta encontrar qualquer JSON grande que contenha "seasons"
-    json_matches = re.findall(r'({[^<]*"seasons"\s*:\s*\[.*?\][^<]*})', html, re.DOTALL)
-    for json_str in json_matches:
-        try:
-            data = json.loads(json_str)
-            if "seasons" in data:
-                return data
-        except:
-            pass
-
-    return None
+def fetch_series_items(session: requests.Session, series_id: str, token: str) -> dict:
+    url = VOD_ITEMS_URL
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}",
+        "Referer": f"https://pluto.tv/br/on-demand/series/{series_id}",
+        "Origin": "https://pluto.tv",
+    }
+    params = {"ids": series_id}
+    logger.info(f"Consultando API de itens: {url}?ids={series_id}")
+    resp = session.get(url, headers=headers, params=params)
+    resp.raise_for_status()
+    return resp.json()
 
 def extract_episodes(series_data: dict, series_id: str) -> List[dict]:
     series_title = series_data.get("name", "Desconhecido")
@@ -168,9 +199,9 @@ def main():
     series_id = extract_series_id(series_input)
     output_dir = Path(config.get("output_dir", "./output"))
     cookies_file = config.get("cookies_file")
+    geo = config.get("geo", {"latitude": -23.5505, "longitude": -46.6333})
     debug_mode = config.get("debug_mode", True)
 
-    # Carregar cookies
     cookie_content = os.environ.get("PLUTO_COOKIES", "")
     if not cookie_content and cookies_file:
         cookie_path = Path(cookies_file)
@@ -191,32 +222,30 @@ def main():
     for name, value in cookies.items():
         session.cookies.set(name, value, domain=".pluto.tv")
 
-    page_url = SERIES_PAGE_URL.format(series_id=series_id)
-    logger.info(f"Baixando página: {page_url}")
+    device_id = str(uuid.uuid4())
     try:
-        resp = session.get(page_url, timeout=30)
-        resp.raise_for_status()
-        html = resp.text
-    except Exception as e:
-        logger.exception("Falha ao baixar a página.")
-        sys.exit(1)
+        token = get_jwt_token(session, device_id, series_id, geo)
+        data = fetch_series_items(session, series_id, token)
 
-    series_data = extract_series_data_from_html(html)
-    if not series_data:
-        logger.error("Não foi possível extrair os dados da série do HTML.")
+        # A API de itens retorna uma lista com um único elemento
+        if isinstance(data, list) and len(data) > 0:
+            series_data = data[0]
+        elif isinstance(data, dict):
+            series_data = data
+        else:
+            raise ValueError("Formato de resposta inesperado.")
+
         if debug_mode:
-            with open("page_debug.html", "w", encoding="utf-8") as f:
-                f.write(html)
-            logger.info("HTML salvo em page_debug.html")
+            with open("series_debug.json", "w", encoding="utf-8") as f:
+                json.dump(series_data, f, indent=2, ensure_ascii=False)
+            logger.info("Debug salvo em series_debug.json")
+
+        episodes = extract_episodes(series_data, series_id)
+        write_output_file(series_data.get("name", "Série Desconhecida"), episodes, output_dir)
+
+    except Exception as e:
+        logger.exception("Erro fatal.")
         sys.exit(1)
-
-    if debug_mode:
-        with open("series_debug.json", "w", encoding="utf-8") as f:
-            json.dump(series_data, f, indent=2, ensure_ascii=False)
-        logger.info("Dados da série salvos em series_debug.json")
-
-    episodes = extract_episodes(series_data, series_id)
-    write_output_file(series_data.get("name", "Série Desconhecida"), episodes, output_dir)
 
 if __name__ == "__main__":
     main()
