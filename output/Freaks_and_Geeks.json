@@ -1,0 +1,132 @@
+{
+  "series_title": "Freaks and Geeks",
+  "series_id": "6059f103b58b22001a46f54b",
+  "episodes": [
+    {
+      "season": 1,
+      "episode": 1,
+      "slug": "S01E01",
+      "title": "Piloto",
+      "episode_id": "60959ee4d9b0ce0014e4b694"
+    },
+    {
+      "season": 1,
+      "episode": 2,
+      "slug": "S01E02",
+      "title": "Cervejas e açudes",
+      "episode_id": "60959e2141fc48001326c5af"
+    },
+    {
+      "season": 1,
+      "episode": 3,
+      "slug": "S01E03",
+      "title": "Truques e travessuras",
+      "episode_id": "60959e2341fc48001326c5d6"
+    },
+    {
+      "season": 1,
+      "episode": 4,
+      "slug": "S01E04",
+      "title": "Kim Kelley é minha amiga",
+      "episode_id": "60959e2141fc48001326c59a"
+    },
+    {
+      "season": 1,
+      "episode": 5,
+      "slug": "S01E05",
+      "title": "Testes e seios",
+      "episode_id": "60959e2041fc48001326c553"
+    },
+    {
+      "season": 1,
+      "episode": 6,
+      "slug": "S01E06",
+      "title": "Eu estou com a banda",
+      "episode_id": "60959e2541fc48001326c674"
+    },
+    {
+      "season": 1,
+      "episode": 7,
+      "slug": "S01E07",
+      "title": "Cardado e descartado",
+      "episode_id": "60959e2e41fc48001326c6f2"
+    },
+    {
+      "season": 1,
+      "episode": 8,
+      "slug": "S01E08",
+      "title": "Namoradas e Namorados",
+      "episode_id": "60959e2541fc48001326c65d"
+    },
+    {
+      "season": 1,
+      "episode": 9,
+      "slug": "S01E09",
+      "title": "Temos Espírito",
+      "episode_id": "60959e2641fc48001326c689"
+    },
+    {
+      "season": 1,
+      "episode": 10,
+      "slug": "S01E10",
+      "title": "O diário",
+      "episode_id": "60959e2341fc48001326c615"
+    },
+    {
+      "season": 1,
+      "episode": 11,
+      "slug": "S01E11",
+      "title": "Aparência e livros",
+      "episode_id": "60959e2141fc48001326c585"
+    },
+    {
+      "season": 1,
+      "episode": 12,
+      "slug": "S01E12",
+      "title": "A porta da garagem",
+      "episode_id": "60959e2641fc48001326c6a7"
+    },
+    {
+      "season": 1,
+      "episode": 13,
+      "slug": "S01E13",
+      "title": "Engasgando e fumando",
+      "episode_id": "60959e2341fc48001326c5eb"
+    },
+    {
+      "season": 1,
+      "episode": 14,
+      "slug": "S01E14",
+      "title": "Cachorros mortos e professores de ginástica",
+      "episode_id": "60959e2e41fc48001326c707"
+    },
+    {
+      "season": 1,
+      "episode": 15,
+      "slug": "S01E15",
+      "title": "Noshing e Moshing",
+      "episode_id": "60959f4c72e8e300148a367f"
+    },
+    {
+      "season": 1,
+      "episode": 16,
+      "slug": "S01E16",
+      "title": "Beijar e vagabundear",
+      "episode_id": "60959e2341fc48001326c62b"
+    },
+    {
+      "season": 1,
+      "episode": 17,
+      "slug": "S01E17",
+      "title": "As pequenas coisas",
+      "episode_id": "60959e2341fc48001326c600"
+    },
+    {
+      "season": 1,
+      "episode": 18,
+      "slug": "S01E18",
+      "title": "Discotecas e Dragões",
+      "episode_id": "60959e2141fc48001326c56e"
+    }
+  ]
+}
