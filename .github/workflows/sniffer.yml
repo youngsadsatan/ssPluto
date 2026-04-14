@@ -1,10 +1,13 @@
 name: Pluto TV Sniffer
 
 on:
-  workflow_dispatch:   #
+  workflow_dispatch:
+  
+permissions:
+  contents: write
 
 jobs:
-  sniff:
+  sniffer:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,7 +16,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14.4'
+          python-version: '3.11'
 
       - name: Install requests
         run: pip install requests
@@ -23,8 +26,10 @@ jobs:
           PLUTO_COOKIES: ${{ secrets.PLUTO_COOKIES }}
         run: python PlutoTV_sniffer.py
 
-      - name: Upload results
-        uses: actions/upload-artifact@v4
-        with:
-          name: pluto-episodes
-          path: '*.txt'
+      - name: Commit e push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add *.txt
+          git diff --staged --quiet || git commit -m "Atualiza catálogos de episódios"
+          git push
