@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Pluto TV Sniffer - Versão Estável com Saída JSON
-Obtém os dados completos da série e gera um arquivo JSON estruturado.
-"""
 
 import json
 import logging
