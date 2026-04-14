@@ -1,0 +1,70 @@
+# .github/workflows/pluto_sniffer.yml
+name: Pluto TV Sniffer
+
+on:
+  workflow_dispatch:
+    inputs:
+      series_input:
+        description: 'ID da série ou URL (ex: 66d70dfaf98f52001332a8f5)'
+        required: true
+        default: '66d70dfaf98f52001332a8f5'
+  schedule:
+    - cron: '0 0 * * 0'  # opcional: executa todo domingo à meia-noite UTC
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  sniff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers with dependencies
+        run: |
+          playwright install --with-deps chromium
+
+      - name: Create output directory
+        run: mkdir -p output
+
+      - name: Run sniffer
+        env:
+          SERIES_INPUT: ${{ github.event.inputs.series_input || '66d70dfaf98f52001332a8f5' }}
+        run: |
+          python pluto_sniffer_playwright.py "$SERIES_INPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pluto-series-data
+          path: output/*.txt
+          retention-days: 7
+
+      - name: Commit and push result (optional)
+        if: github.event_name != 'pull_request'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add output/*.txt || true
+          git commit -m "Update series data [skip ci]" || true
+          git push
