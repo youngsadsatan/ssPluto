@@ -1,0 +1,706 @@
+{
+  "series_title": "Tratamento de Choque",
+  "series_id": "66d70dfaf98f52001332a8f5",
+  "episodes": [
+    {
+      "season": 1,
+      "episode": 1,
+      "slug": "S01E01",
+      "title": "Charlie de volta à terapia",
+      "episode_id": "66d71d6c46be430013cf2195"
+    },
+    {
+      "season": 1,
+      "episode": 2,
+      "slug": "S01E02",
+      "title": "Charlie e a transa que o tirou da seca",
+      "episode_id": "66d71d6e46be430013cf22a4"
+    },
+    {
+      "season": 1,
+      "episode": 3,
+      "slug": "S01E03",
+      "title": "Charlie e Kent brigam por um paciente",
+      "episode_id": "66d760f877deaf0014ca16fe"
+    },
+    {
+      "season": 1,
+      "episode": 4,
+      "slug": "S01E04",
+      "title": "Charlie tenta a privação de sono",
+      "episode_id": "66d760fa77deaf0014ca1762"
+    },
+    {
+      "season": 1,
+      "episode": 5,
+      "slug": "S01E05",
+      "title": "Charlie e o paciente saído da prisão",
+      "episode_id": "66d713946ec6ad001375dac1"
+    },
+    {
+      "season": 1,
+      "episode": 6,
+      "slug": "S01E06",
+      "title": "Charlie namora uma paciente de Kate",
+      "episode_id": "66d713976ec6ad001375dc3d"
+    },
+    {
+      "season": 1,
+      "episode": 7,
+      "slug": "S01E07",
+      "title": "Charlie tenta provar que terapia é coisa séria",
+      "episode_id": "66d716649f04dd0013b7f8db"
+    },
+    {
+      "season": 1,
+      "episode": 8,
+      "slug": "S01E08",
+      "title": "Charlie revela o segredo de um paciente",
+      "episode_id": "66d716679f04dd0013b7f9de"
+    },
+    {
+      "season": 1,
+      "episode": 9,
+      "slug": "S01E09",
+      "title": "Charlie e a visita do pai",
+      "episode_id": "66d70dfbf98f52001332a916"
+    },
+    {
+      "season": 1,
+      "episode": 10,
+      "slug": "S01E10",
+      "title": "Charlie fica romântico",
+      "episode_id": "66d70dfef98f52001332aa28"
+    },
+    {
+      "season": 2,
+      "episode": 1,
+      "slug": "S02E01",
+      "title": "Charlie enlouquece no chá de bebê",
+      "episode_id": "66e99546a0ed470013111961"
+    },
+    {
+      "season": 2,
+      "episode": 2,
+      "slug": "S02E02",
+      "title": "Charlie e o pai ficando demente",
+      "episode_id": "66e9997a22dfe900133c59a0"
+    },
+    {
+      "season": 2,
+      "episode": 3,
+      "slug": "S02E03",
+      "title": "Charlie e o ex-paciente",
+      "episode_id": "66e9998222dfe900133c5b6c"
+    },
+    {
+      "season": 2,
+      "episode": 4,
+      "slug": "S02E04",
+      "title": "Charlie e as más companhias do pai",
+      "episode_id": "66e99c4138c4a00013d5630f"
+    },
+    {
+      "season": 2,
+      "episode": 5,
+      "slug": "S02E05",
+      "title": "Charlie e Jen juntos novamente",
+      "episode_id": "66e99c4738c4a00013d564f6"
+    },
+    {
+      "season": 2,
+      "episode": 6,
+      "slug": "S02E06",
+      "title": "Charlie e a terapia do engano",
+      "episode_id": "66e99c4a38c4a00013d5667c"
+    },
+    {
+      "season": 2,
+      "episode": 7,
+      "slug": "S02E07",
+      "title": "Charlie namora uma professora",
+      "episode_id": "66ea6c62a1c8920013ae8ff6"
+    },
+    {
+      "season": 2,
+      "episode": 8,
+      "slug": "S02E08",
+      "title": "Charlie e Cee Lo",
+      "episode_id": "66ea6c6ba1c8920013ae926d"
+    },
+    {
+      "season": 2,
+      "episode": 9,
+      "slug": "S02E09",
+      "title": "Charlie, o perito",
+      "episode_id": "66ea6c72a1c8920013ae94b0"
+    },
+    {
+      "season": 2,
+      "episode": 10,
+      "slug": "S02E10",
+      "title": "Charlie e a Igreja Católica",
+      "episode_id": "66ea6c75a1c8920013ae95be"
+    },
+    {
+      "season": 2,
+      "episode": 11,
+      "slug": "S02E11",
+      "title": "Charlie e a namorada louca, sexy e brava",
+      "episode_id": "66ea6dca38c4a00013de8d86"
+    },
+    {
+      "season": 2,
+      "episode": 12,
+      "slug": "S02E12",
+      "title": "Charlie coloca Lindsay Lohan em apuros",
+      "episode_id": "66ea6dcd38c4a00013de8e5a"
+    },
+    {
+      "season": 2,
+      "episode": 13,
+      "slug": "S02E13",
+      "title": "Charlie e Lacey irritam a vizinhança",
+      "episode_id": "66e9a4b1a1c8920013a72157"
+    },
+    {
+      "season": 2,
+      "episode": 14,
+      "slug": "S02E14",
+      "title": "Charlie e Kate dão uma cavalgada",
+      "episode_id": "66e9a4b5a1c8920013a72265"
+    },
+    {
+      "season": 2,
+      "episode": 15,
+      "slug": "S02E15",
+      "title": "Charlie e o namoro entre pacientes",
+      "episode_id": "66e9a4baa1c8920013a7241e"
+    },
+    {
+      "season": 2,
+      "episode": 16,
+      "slug": "S02E16",
+      "title": "Charlie e as fotos comprometedoras com Kate",
+      "episode_id": "66e9a4bfa1c8920013a725bd"
+    },
+    {
+      "season": 2,
+      "episode": 17,
+      "slug": "S02E17",
+      "title": "Charlie deixa Kate tomar as rédeas",
+      "episode_id": "66e9a4c4a1c8920013a72732"
+    },
+    {
+      "season": 2,
+      "episode": 18,
+      "slug": "S02E18",
+      "title": "Charlie e o coach de término",
+      "episode_id": "66e99dc146be430013af6bbb"
+    },
+    {
+      "season": 2,
+      "episode": 19,
+      "slug": "S02E19",
+      "title": "Charlie, Kate e Jen esquentam a relação",
+      "episode_id": "66e99dbe46be430013af6b58"
+    },
+    {
+      "season": 2,
+      "episode": 20,
+      "slug": "S02E20",
+      "title": "Charlie termina com Kate",
+      "episode_id": "66e99dc646be430013af6d9e"
+    },
+    {
+      "season": 2,
+      "episode": 21,
+      "slug": "S02E21",
+      "title": "Charlie e Kate começam uma pesquisa de sexo",
+      "episode_id": "66e99db046be430013af65e1"
+    },
+    {
+      "season": 2,
+      "episode": 22,
+      "slug": "S02E22",
+      "title": "Charlie e a nova amizade colorida",
+      "episode_id": "66e99dc446be430013af6c90"
+    },
+    {
+      "season": 3,
+      "episode": 1,
+      "slug": "S03E01",
+      "title": "Charlie e o sexo virtual no aeroporto",
+      "episode_id": "66e99deb46be430013af78f4"
+    },
+    {
+      "season": 3,
+      "episode": 2,
+      "slug": "S03E02",
+      "title": "Charlie e a nova terapeuta",
+      "episode_id": "66e99dee46be430013af7a77"
+    },
+    {
+      "season": 3,
+      "episode": 3,
+      "slug": "S03E03",
+      "title": "Charlie e a nerd gostosa",
+      "episode_id": "66e99df346be430013af7bf5"
+    },
+    {
+      "season": 3,
+      "episode": 4,
+      "slug": "S03E04",
+      "title": "Charlie e o gigolô secreto",
+      "episode_id": "66e99df646be430013af7d77"
+    },
+    {
+      "season": 3,
+      "episode": 5,
+      "slug": "S03E05",
+      "title": "Charlie namora a irmã de um serial killer",
+      "episode_id": "66e99df846be430013af7e47"
+    },
+    {
+      "season": 3,
+      "episode": 6,
+      "slug": "S03E06",
+      "title": "Charlie e o paciente infiel",
+      "episode_id": "66e99dff46be430013af80e1"
+    },
+    {
+      "season": 3,
+      "episode": 7,
+      "slug": "S03E07",
+      "title": "Charlie e o atropelamento",
+      "episode_id": "66ea6dd038c4a00013de8fe4"
+    },
+    {
+      "season": 3,
+      "episode": 8,
+      "slug": "S03E08",
+      "title": "Charlie e a virgem",
+      "episode_id": "66ea6dd238c4a00013de9044"
+    },
+    {
+      "season": 3,
+      "episode": 9,
+      "slug": "S03E09",
+      "title": "Charlie acaba com a vida sexual da ex",
+      "episode_id": "66ea6dd538c4a00013de9115"
+    },
+    {
+      "season": 3,
+      "episode": 10,
+      "slug": "S03E10",
+      "title": "Charlie e a rebelião na cadeia",
+      "episode_id": "66ea6dda38c4a00013de9364"
+    },
+    {
+      "season": 3,
+      "episode": 11,
+      "slug": "S03E11",
+      "title": "Charlie e Kate transam por dinheiro",
+      "episode_id": "66ea6f319f04dd0013d71857"
+    },
+    {
+      "season": 3,
+      "episode": 12,
+      "slug": "S03E12",
+      "title": "Charlie e o flagrante",
+      "episode_id": "66ea6f349f04dd0013d71962"
+    },
+    {
+      "season": 3,
+      "episode": 13,
+      "slug": "S03E13",
+      "title": "Charlie faz a festa rolar",
+      "episode_id": "66e9a4c9a1c8920013a728a5"
+    },
+    {
+      "season": 3,
+      "episode": 14,
+      "slug": "S03E14",
+      "title": "Charlie e a estudante universitária",
+      "episode_id": "66e9a4cea1c8920013a72966"
+    },
+    {
+      "season": 3,
+      "episode": 15,
+      "slug": "S03E15",
+      "title": "Novo parceiro de estudo de Charlie",
+      "episode_id": "66e9a4d1a1c8920013a72a37"
+    },
+    {
+      "season": 3,
+      "episode": 16,
+      "slug": "S03E16",
+      "title": "Charlie e a viciada em sexo",
+      "episode_id": "66e9a4d7a1c8920013a72b7b"
+    },
+    {
+      "season": 3,
+      "episode": 17,
+      "slug": "S03E17",
+      "title": "Charlie e a prostituta",
+      "episode_id": "66e9a4daa1c8920013a72c4c"
+    },
+    {
+      "season": 3,
+      "episode": 18,
+      "slug": "S03E18",
+      "title": "Charlie e o diabo",
+      "episode_id": "66e9a4e0a1c8920013a72db7"
+    },
+    {
+      "season": 3,
+      "episode": 19,
+      "slug": "S03E19",
+      "title": "Charlie, Sean e a batalha das ex",
+      "episode_id": "66e99db546be430013af67bf"
+    },
+    {
+      "season": 3,
+      "episode": 20,
+      "slug": "S03E20",
+      "title": "Charlie ajuda Lacey a ficar rica",
+      "episode_id": "66e99db346be430013af66ef"
+    },
+    {
+      "season": 3,
+      "episode": 21,
+      "slug": "S03E21",
+      "title": "Charlie perde a virgindade de novo",
+      "episode_id": "66e99db846be430013af6942"
+    },
+    {
+      "season": 3,
+      "episode": 22,
+      "slug": "S03E22",
+      "title": "Charlie transa pela ciência",
+      "episode_id": "66e99dbb46be430013af6a4c"
+    },
+    {
+      "season": 3,
+      "episode": 23,
+      "slug": "S03E23",
+      "title": "Charlie e Lacey juntam os trapos",
+      "episode_id": "66e99dad46be430013af64d6"
+    },
+    {
+      "season": 3,
+      "episode": 24,
+      "slug": "S03E24",
+      "title": "Charlie e a prostituta do Natal",
+      "episode_id": "66e99dc946be430013af6eac"
+    },
+    {
+      "season": 4,
+      "episode": 1,
+      "slug": "S04E01",
+      "title": "Charlie e a intervenção do pijama",
+      "episode_id": "66fd5bc2da376d0013efe4f5"
+    },
+    {
+      "season": 4,
+      "episode": 2,
+      "slug": "S04E02",
+      "title": "Charlie junta Jordan com um serial killer",
+      "episode_id": "66fd5bbfda376d0013efe358"
+    },
+    {
+      "season": 4,
+      "episode": 3,
+      "slug": "S04E03",
+      "title": "Charlie e as gêmeas",
+      "episode_id": "66fd5bc9da376d0013efe661"
+    },
+    {
+      "season": 4,
+      "episode": 4,
+      "slug": "S04E04",
+      "title": "Charlie e Sean brigam por uma mulher",
+      "episode_id": "66fd5bcfda376d0013efe87a"
+    },
+    {
+      "season": 4,
+      "episode": 5,
+      "slug": "S04E05",
+      "title": "Charlie e a última tentação de Eugênio",
+      "episode_id": "66fd5bd1da376d0013efe981"
+    },
+    {
+      "season": 4,
+      "episode": 6,
+      "slug": "S04E06",
+      "title": "Charlie e a latina gostosa",
+      "episode_id": "66fd5bd8da376d0013efec47"
+    },
+    {
+      "season": 4,
+      "episode": 7,
+      "slug": "S04E07",
+      "title": "Charlie e a filha do oficial da condicional",
+      "episode_id": "66fd70d2e87eac001343638f"
+    },
+    {
+      "season": 4,
+      "episode": 8,
+      "slug": "S04E08",
+      "title": "Charlie e a pontuação no aplicativo",
+      "episode_id": "66fd70d6e87eac001343645f"
+    },
+    {
+      "season": 4,
+      "episode": 9,
+      "slug": "S04E09",
+      "title": "Charlie e Jordan vão para a cadeia",
+      "episode_id": "66fd70d9e87eac0013436566"
+    },
+    {
+      "season": 4,
+      "episode": 10,
+      "slug": "S04E10",
+      "title": "Charlie e a prostituta revirginada",
+      "episode_id": "66fd72399edd920013a17217"
+    },
+    {
+      "season": 4,
+      "episode": 11,
+      "slug": "S04E11",
+      "title": "Charlie pega Jordan no pulo",
+      "episode_id": "66fd723d9edd920013a173b4"
+    },
+    {
+      "season": 4,
+      "episode": 12,
+      "slug": "S04E12",
+      "title": "Charlie passa a noite com Lacey",
+      "episode_id": "66fd72409edd920013a17552"
+    },
+    {
+      "season": 4,
+      "episode": 13,
+      "slug": "S04E13",
+      "title": "Charlie transa com a namorada de um preso",
+      "episode_id": "66fd54bd3d5532001331c948"
+    },
+    {
+      "season": 4,
+      "episode": 14,
+      "slug": "S04E14",
+      "title": "Charlie e a tira da pesada",
+      "episode_id": "66fd54c03d5532001331ca52"
+    },
+    {
+      "season": 4,
+      "episode": 15,
+      "slug": "S04E15",
+      "title": "Charlie, Lacey e o encanador perigoso",
+      "episode_id": "66fd54c33d5532001331cb5a"
+    },
+    {
+      "season": 4,
+      "episode": 16,
+      "slug": "S04E16",
+      "title": "Charlie e a mãe de todas as sessões",
+      "episode_id": "66fd54b73d5532001331c736"
+    },
+    {
+      "season": 4,
+      "episode": 17,
+      "slug": "S04E17",
+      "title": "Charlie e a irmã selvagem de Sean",
+      "episode_id": "66fd54ba3d5532001331c83d"
+    },
+    {
+      "season": 4,
+      "episode": 18,
+      "slug": "S04E18",
+      "title": "Charlie e o ménage",
+      "episode_id": "66fd54b43d5532001331c598"
+    },
+    {
+      "season": 4,
+      "episode": 19,
+      "slug": "S04E19",
+      "title": "Charlie e a stripper da desgraça",
+      "episode_id": "66fd5788da376d0013efd42e"
+    },
+    {
+      "season": 4,
+      "episode": 20,
+      "slug": "S04E20",
+      "title": "Charlie testa sua força de vontade",
+      "episode_id": "66fd578bda376d0013efd5cb"
+    },
+    {
+      "season": 4,
+      "episode": 21,
+      "slug": "S04E21",
+      "title": "Charlie e o terapeuta médium",
+      "episode_id": "66fd578dda376d0013efd6d3"
+    },
+    {
+      "season": 4,
+      "episode": 22,
+      "slug": "S04E22",
+      "title": "Charlie se coloca entre Sean e Jordan",
+      "episode_id": "66fd5794da376d0013efd900"
+    },
+    {
+      "season": 4,
+      "episode": 23,
+      "slug": "S04E23",
+      "title": "Charlie se mete com a diretora gostosa",
+      "episode_id": "66fd5796da376d0013efda07"
+    },
+    {
+      "season": 4,
+      "episode": 24,
+      "slug": "S04E24",
+      "title": "Charlie e o segredinho sujo da diretora",
+      "episode_id": "66fd579cda376d0013efdb39"
+    },
+    {
+      "season": 5,
+      "episode": 1,
+      "slug": "S05E01",
+      "title": "Charlie e o temperamento da perdição",
+      "episode_id": "66f3960aee0bee0013edfd9a"
+    },
+    {
+      "season": 5,
+      "episode": 2,
+      "slug": "S05E02",
+      "title": "Charlie contra o lixeiro",
+      "episode_id": "66f39769a2922a0013083220"
+    },
+    {
+      "season": 5,
+      "episode": 3,
+      "slug": "S05E03",
+      "title": "Charlie e o caso da gostosa curiosa",
+      "episode_id": "66f3976da2922a001308332a"
+    },
+    {
+      "season": 5,
+      "episode": 4,
+      "slug": "S05E04",
+      "title": "Charlie e a caloura da república",
+      "episode_id": "66f398d2ee0bee0013edfe6c"
+    },
+    {
+      "season": 5,
+      "episode": 5,
+      "slug": "S05E05",
+      "title": "Charlie brinca de esconde-esconde",
+      "episode_id": "66f39a3aad16fb0013fc1149"
+    },
+    {
+      "season": 5,
+      "episode": 6,
+      "slug": "S05E06",
+      "title": "Charlie e a vingança da nerd gostosa",
+      "episode_id": "66f39a3dad16fb0013fc1219"
+    },
+    {
+      "season": 5,
+      "episode": 7,
+      "slug": "S05E07",
+      "title": "Charlie e a maldição do punho voador",
+      "episode_id": "66f39ba29edd920013f6c97c"
+    },
+    {
+      "season": 5,
+      "episode": 8,
+      "slug": "S05E08",
+      "title": "Charlie e a casa das prostitutas",
+      "episode_id": "66f3a57a3d55320013b960ea"
+    },
+    {
+      "season": 5,
+      "episode": 9,
+      "slug": "S05E09",
+      "title": "Charlie droga Patrick",
+      "episode_id": "66ed99319f04dd00130889ba"
+    },
+    {
+      "season": 5,
+      "episode": 10,
+      "slug": "S05E10",
+      "title": "Charlie e Lacey correm atrás da grana",
+      "episode_id": "66eda03f46be430013fe9610"
+    },
+    {
+      "season": 5,
+      "episode": 11,
+      "slug": "S05E11",
+      "title": "Charlie e o Dia de Ação de Graças terrível, horrível, espantoso e horroroso",
+      "episode_id": "66eda04246be430013fe9717"
+    },
+    {
+      "season": 5,
+      "episode": 12,
+      "slug": "S05E12",
+      "title": "Charlie tenta a sorte em Las Vegas",
+      "episode_id": "670fff25ad16fb0013852010"
+    },
+    {
+      "season": 5,
+      "episode": 13,
+      "slug": "S05E13",
+      "title": "Charlie e o retorno da amante do perigo",
+      "episode_id": "66eda04546be430013fe981f"
+    },
+    {
+      "season": 5,
+      "episode": 14,
+      "slug": "S05E14",
+      "title": "Charlie pula na cama com Jordan e o ex",
+      "episode_id": "66eda1af73aa510013ac2431"
+    },
+    {
+      "season": 5,
+      "episode": 15,
+      "slug": "S05E15",
+      "title": "Charlie e a vida de sonho",
+      "episode_id": "66eda1ab73aa510013ac232a"
+    },
+    {
+      "season": 5,
+      "episode": 16,
+      "slug": "S05E16",
+      "title": "Charlie e a oponente à altura",
+      "episode_id": "66eda1a873aa510013ac2222"
+    },
+    {
+      "season": 5,
+      "episode": 17,
+      "slug": "S05E17",
+      "title": "Charlie e o desastre épico de relacionamento",
+      "episode_id": "66eda1a573aa510013ac20a0"
+    },
+    {
+      "season": 5,
+      "episode": 18,
+      "slug": "S05E18",
+      "title": "Charlie e a católica gostosa",
+      "episode_id": "66eda1a173aa510013ac1f1d"
+    },
+    {
+      "season": 5,
+      "episode": 19,
+      "slug": "S05E19",
+      "title": "Charlie e o voto da linda Minerva",
+      "episode_id": "66ed7fe346be430013fe174e"
+    },
+    {
+      "season": 5,
+      "episode": 20,
+      "slug": "S05E20",
+      "title": "Charlie e o centésimo episódio",
+      "episode_id": "66ed7ff446be430013fe1855"
+    }
+  ]
+}
