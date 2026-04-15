@@ -2,7 +2,7 @@ name: Atualizar Playlist Pluto TV
 
 on:
   schedule:
-    - cron: '0 */12 * * *'
+  - cron: '0 23 * * *'
   workflow_dispatch:
 
 permissions:
@@ -18,15 +18,15 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Instalar dependências
+    - name: Install dependencies
       run: pip install streamlink
 
-    - name: Executar script
+    - name: Run script
       env:
         PLUTO_COOKIES: ${{ secrets.PLUTO_COOKIES }}
       run: python pluto_playlist.py
 
-    - name: Commit e push
+    - name: Commit & push
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
